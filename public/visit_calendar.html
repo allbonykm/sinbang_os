@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내원 관리 / 캘린더</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #7c3aed;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --today-bg: #f0fdf4;
+            --today-border: #22c55e;
+            --new-patient-bg: #fee2e2;
+            --new-patient-text: #991b1b;
+            --returning-patient-bg: #f1f5f9;
+            --returning-patient-text: #334155;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Pretendard', -apple-system, sans-serif; background: var(--bg-color); color: var(--text-main); padding: 20px; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .header-right { display: flex; gap: 10px; }
+
+        .btn { padding: 8px 15px; border-radius: 8px; border: 1px solid var(--border-color); background: white; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 14px; transition: all 0.2s; }
+        .btn:hover { background: #f1f5f9; }
+        .btn-primary { background: var(--primary-color); color: white; border: none; }
+        .btn-primary:hover { background: var(--secondary-color); }
+
+        .current-month { font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        
+        .summary-badges { display: flex; gap: 10px; margin-left: 20px; }
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+        .badge-new { background: #fee2e2; color: #991b1b; }
+        .badge-returning { background: #e0f2fe; color: #075985; }
+
+        .calendar-container { background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); overflow: hidden; border: 1px solid var(--border-color); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--border-color); }
+        
+        .calendar-day-header { padding: 12px; text-align: center; font-weight: 600; font-size: 13px; background: #f8fafc; border-bottom: 1px solid var(--border-color); color: var(--text-muted); }
+        .calendar-day-header:nth-child(1) { color: #ef4444; }
+        .calendar-day-header:nth-child(7) { color: #3b82f6; }
+
+        .calendar-cell { min-height: 120px; border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); padding: 8px; position: relative; transition: background 0.1s; }
+        .calendar-cell:nth-child(7n) { border-right: none; }
+        .calendar-cell.other-month { background: #f1f5f9; opacity: 0.5; }
+        .calendar-cell.today { background: var(--today-bg); }
+        
+        .day-number { font-size: 13px; font-weight: 600; margin-bottom: 5px; display: inline-block; width: 24px; height: 24px; text-align: center; line-height: 24px; border-radius: 50%; }
+        .calendar-cell.today .day-number { background: var(--today-border); color: white; }
+        
+        .cell-stats {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .stat-new { color: var(--new-patient-text); }
+        .stat-returning { color: #075985; }
+
+        .patient-list { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; font-size: 10px; overflow: hidden; }
+        .patient-item { 
+            padding: 1px 4px; 
+            border-radius: 4px; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .patient-item.new { background: var(--new-patient-bg); color: var(--new-patient-text); border-left: 2px solid #ef4444; }
+        .patient-item.returning { background: var(--returning-patient-bg); color: var(--returning-patient-text); border-left: 2px solid #94a3b8; }
+
+        .patient-time { font-weight: 700; min-width: 28px; }
+        .more-info { grid-column: span 2; font-size: 10px; color: var(--text-muted); padding: 2px 5px; cursor: pointer; text-align: right; }
+
+        /* Modal Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; right:0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .modal-content { background: white; border-radius: 12px; width: 100%; max-width: 450px; padding: 20px; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .modal-close { cursor: pointer; font-size: 20px; color: var(--text-muted); }
+        .modal-body { max-height: 400px; overflow-y: auto; }
+
+        .modal-patient-list { list-style: none; }
+        .modal-patient-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #f1f5f9; align-items: center; }
+        .modal-patient-item:last-child { border-bottom: none; }
+        .modal-patient-info { display: flex; gap: 10px; align-items: center; }
+        .modal-patient-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; }
+
+        @media (max-width: 768px) {
+            .calendar-day-header span { display: none; }
+            .calendar-cell { min-height: 80px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-left">
+            <button class="btn" onclick="goToToday()">오늘</button>
+            <div class="current-month">
+                <button class="btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                <span id="title-month">2026년 4월</span>
+                <button class="btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="summary-badges" id="summary-container">
+                <span class="badge badge-new">신환 <span id="summary-new">0</span></span>
+                <span class="badge badge-returning">재진 <span id="summary-returning">0</span></span>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="btn" onclick="fetchCalendarData()"><i class="fas fa-sync-alt"></i> 새로고침</button>
+        </div>
+    </div>
+
+    <div class="calendar-container">
+        <div class="calendar-grid">
+            <div class="calendar-day-header">일<span>요일</span></div>
+            <div class="calendar-day-header">월<span>요일</span></div>
+            <div class="calendar-day-header">화<span>요일</span></div>
+            <div class="calendar-day-header">수<span>요일</span></div>
+            <div class="calendar-day-header">목<span>요일</span></div>
+            <div class="calendar-day-header">금<span>요일</span></div>
+            <div class="calendar-day-header">토<span>요일</span></div>
+        </div>
+        <div class="calendar-grid" id="calendar-body">
+            <!-- Cells will be generated by JS -->
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modal-title">2026-04-03 내원 환자</h3>
+                <span class="modal-close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <ul class="modal-patient-list" id="modal-patient-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentYear, currentMonth;
+        let visitsData = {};
+
+        function init() {
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentMonth = now.getMonth() + 1;
+            renderCalendarSkeleton();
+            fetchCalendarData();
+            
+            // 실시간 업데이트 (1분마다)
+            setInterval(() => {
+                const now = new Date();
+                if (now.getFullYear() === currentYear && (now.getMonth() + 1) === currentMonth) {
+                    fetchCalendarData(true); // silent update
+                }
+            }, 60000);
+        }
+
+        async function fetchCalendarData(silent = false) {
+            try {
+                if (!silent) document.getElementById('calendar-body').style.opacity = '0.6';
+                
+                const res = await fetch(`/api/visit-calendar?year=${currentYear}&month=${currentMonth}`);
+                const result = await res.json();
+
+                if (result.success) {
+                    visitsData = result.visits;
+                    updateSummary(result.summary);
+                    renderCalendarCells();
+                }
+                document.getElementById('calendar-body').style.opacity = '1';
+            } catch (error) {
+                console.error('Failed to fetch calendar data:', error);
+            }
+        }
+
+        function updateSummary(summary) {
+            document.getElementById('summary-new').textContent = summary.newPatients || 0;
+            document.getElementById('summary-returning').textContent = summary.returningPatients || 0;
+            document.getElementById('title-month').textContent = `${currentYear}년 ${currentMonth}월`;
+        }
+
+        function renderCalendarSkeleton() {
+            // Skeleton can be same as renderCalendarCells but empty
+        }
+
+        function renderCalendarCells() {
+            const body = document.getElementById('calendar-body');
+            body.innerHTML = '';
+
+            const firstDay = new Date(currentYear, currentMonth - 1, 1);
+            const lastDay = new Date(currentYear, currentMonth, 0);
+            
+            // Padding for previous month
+            const startDay = firstDay.getDay(); // 0 is Sunday
+            const prevLastDay = new Date(currentYear, currentMonth - 1, 0).getDate();
+
+            for (let i = startDay - 1; i >= 0; i--) {
+                const day = prevLastDay - i;
+                const cell = createCell(day, true);
+                body.appendChild(cell);
+            }
+
+            // Current month days
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+            for (let d = 1; d <= lastDay.getDate(); d++) {
+                const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isToday = dateStr === todayStr;
+                const cell = createCell(d, false, isToday, dateStr);
+                body.appendChild(cell);
+            }
+
+            // Padding for next month
+            const totalCells = body.children.length;
+            const remaining = (7 - (totalCells % 7)) % 7;
+            for (let i = 1; i <= remaining; i++) {
+                body.appendChild(createCell(i, true));
+            }
+        }
+
+        function createCell(day, isOtherMonth, isToday, dateStr) {
+            const cell = document.createElement('div');
+            cell.className = 'calendar-cell' + (isOtherMonth ? ' other-month' : '') + (isToday ? ' today' : '');
+            
+            const dayNum = document.createElement('span');
+            dayNum.className = 'day-number';
+            dayNum.textContent = day;
+            cell.appendChild(dayNum);
+
+            if (!isOtherMonth && dateStr && visitsData[dateStr]) {
+                const patients = visitsData[dateStr];
+                
+                // Add Stats at top right
+                const stats = document.createElement('div');
+                stats.className = 'cell-stats';
+                const newCount = patients.filter(p => p.type === 'new').length;
+                const returningCount = patients.filter(p => p.type === 'returning').length;
+                
+                if (newCount > 0) {
+                    const sNew = document.createElement('span');
+                    sNew.className = 'stat-new';
+                    sNew.textContent = newCount;
+                    stats.appendChild(sNew);
+                }
+                if (returningCount > 0) {
+                    const sRet = document.createElement('span');
+                    sRet.className = 'stat-returning';
+                    sRet.textContent = returningCount;
+                    stats.appendChild(sRet);
+                }
+                cell.appendChild(stats);
+
+                const list = document.createElement('div');
+                list.className = 'patient-list';
+                
+                // Show up to 8 patients in the cell
+                const displayLimit = 8;
+                patients.slice(0, displayLimit).forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = `patient-item ${p.type}`;
+                    item.innerHTML = `<span class="patient-time">${p.time}</span> ${p.name}`;
+                    list.appendChild(item);
+                });
+
+                if (patients.length > displayLimit) {
+                    const more = document.createElement('div');
+                    more.className = 'more-info';
+                    more.textContent = `...외 ${patients.length - displayLimit}명`;
+                    list.appendChild(more);
+                }
+
+                cell.appendChild(list);
+                
+                // Interaction: click cell to see all or hover
+                cell.style.cursor = 'pointer';
+                cell.onclick = () => showDetails(dateStr, patients);
+            }
+
+            return cell;
+        }
+
+        function showDetails(date, patients) {
+            document.getElementById('modal-title').textContent = `${date} 내원 환자 요약`;
+            const list = document.getElementById('modal-patient-list');
+            list.innerHTML = '';
+
+            patients.forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'modal-patient-item';
+                
+                const typeLabel = p.type === 'new' ? '신환' : '재진';
+                const typeClass = p.type === 'new' ? 'badge-new' : 'badge-returning';
+
+                li.innerHTML = `
+                    <div class="modal-patient-info">
+                        <span style="font-weight:700; width:40px">${p.time}</span>
+                        <span style="font-weight:600; font-size:15px">${p.name}</span>
+                        <span style="color:#64748b; font-size:13px">(${p.chartNo || '----'})</span>
+                    </div>
+                    <span class="badge ${typeClass} modal-patient-badge">${typeLabel}</span>
+                `;
+                list.appendChild(li);
+            });
+
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth > 12) {
+                currentMonth = 1;
+                currentYear++;
+            } else if (currentMonth < 1) {
+                currentMonth = 12;
+                currentYear--;
+            }
+            fetchCalendarData();
+        }
+
+        function goToToday() {
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentMonth = now.getMonth() + 1;
+            fetchCalendarData();
+        }
+
+        init();
+    </script>
+</body>
+</html>

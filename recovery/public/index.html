@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>신방한의원 OS</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .menu {
+            flex: 1;
+            padding: 20px 0;
+            overflow-y: auto;
+        }
+
+        .menu-item {
+            padding: 15px 20px;
+            margin: 5px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 15px;
+        }
+
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(3px);
+        }
+
+        .menu-item.active {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .menu-icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .menu-item.sub-item {
+            font-size: 14px;
+            padding: 12px 15px 12px 45px;
+            margin: 2px 15px;
+            background: transparent;
+        }
+
+        .menu-item.sub-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            background: #f5f7fa;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-header {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 75px;
+        }
+
+        .header-left {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-header h2 {
+            font-size: 20px;
+            color: #2c3e50;
+        }
+
+        .main-header .breadcrumb {
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+
+        .header-routine-summary {
+            flex: 1;
+            margin-left: 50px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 5px 0;
+            white-space: nowrap;
+        }
+
+        .routine-badge {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            border-left: 4px solid #6366f1;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .routine-badge-label {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-right: 5px;
+        }
+
+        .content-frame {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: 18px;
+            color: #7f8c8d;
+        }
+
+        /* Medical Waste Modal */
+        .mw-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .mw-modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <h1><span>🏥</span><span>신방한의원 OS</span></h1>
+            </div>
+            <p>통합 운영 시스템</p>
+        </div>
+        <div class="menu" id="sidebar-menu">
+            <!-- Dynamic Menu Items will be rendered here -->
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="main-header">
+            <div class="header-left">
+                <h2 id="page-title">대시보드</h2>
+                <div class="breadcrumb">홈><span id="breadcrumb-current">대시보드</span></div>
+            </div>
+            <div id="header-routine-summary" class="header-routine-summary">
+                <!-- 오늘 업무가 여기에 표시됨 -->
+            </div>
+        </div>
+        <div class="content-frame">
+            <div id="loading" class="loading">로딩 중... </div><iframe id="content-iframe" style="display:none"></iframe>
+        </div>
+    </div>
+
+    <script> // 모듈 정의
+
+        // 메뉴 데이터 정의 (순서대로)
+        const menuItems = [
+            { id: 'dashboard', title: '대시보드', icon: '🏠', url: '/dashboard.html' },
+            { id: 'patients', title: '환자 관리', icon: '👤', url: '/patients.html' },
+            { id: 'patient-upload', title: 'excel로 환자 등록', icon: '📂', url: '/patient-upload.html' },
+            { id: 'booking', title: '예약 관리', icon: '📅', url: '/booking.html' },
+            { id: 'alltalk', title: '올톡', icon: '📱', url: '/alltalk.html' },
+            { id: 'visit-analysis', title: '내원간격 분석', icon: '📊', url: '/visit_analysis.html' },
+            { id: 'visit-calendar', title: '내원 캘린더', icon: '📅', url: '/visit_calendar.html' }
+        ];
+
+        // 모듈 객체 생성 (기존 호환성 유지)
+        const modules = {};
+        menuItems.forEach(item => {
+            modules[item.id] = item;
+        });
+        // 별칭 및 추가 모듈
+        modules['messages'] = modules['message-system']; // Alias
+        modules['computer-admin'] = { title: '컴퓨터 관리', url: '/computer-admin.html', icon: '🖥️' }; // Admin only
+
+        let computerInfo = null;
+        let allowedMenus = [];
+
+        // 메뉴 렌더링 함수
+        function renderMenu(itemsToRender = menuItems) {
+            const menuContainer = document.getElementById('sidebar-menu');
+            menuContainer.innerHTML = ''; // 초기화
+
+            const isAdmin = computerInfo && computerInfo.isAdmin;
+
+            itemsToRender.forEach(item => {
+                // 권한 체크
+                if (!isAdmin && !allowedMenus.includes(item.id)) {
+                    return; // 권한 없으면 건너뜀
+                }
+
+                const menuItem = document.createElement('div');
+                menuItem.className = 'menu-item';
+                menuItem.setAttribute('data-module', item.id);
+
+                menuItem.innerHTML = `<span class="menu-icon">${item.icon}</span><span>${item.title}</span>`;
+
+                // 클릭 이벤트
+                menuItem.addEventListener('click', (e) => {
+                    if (item.submenus) {
+                        toggleCmsSubmenu(menuItem, item.submenus);
+                    } else {
+                        loadModule(item.id, e);
+                    }
+                });
+
+                menuContainer.appendChild(menuItem);
+            });
+
+
+            // 관리자일 경우 컴퓨터 관리 메뉴 추가 (항상 마지막에)
+            if (isAdmin) {
+                addAdminMenu();
+            }
+        }
+
+        // CMS 서브메뉴 토글 함수
+        function toggleCmsSubmenu(parentEl, submenus) {
+            let submenuContainer = parentEl.nextElementSibling;
+            if (submenuContainer && submenuContainer.classList.contains('submenu-container')) {
+                submenuContainer.remove();
+                parentEl.classList.remove('has-submenu-active');
+                return;
+            }
+
+            submenuContainer = document.createElement('div');
+            submenuContainer.className = 'submenu-container';
+            submenuContainer.style.background = 'rgba(0,0,0,0.1)';
+            submenuContainer.style.margin = '0 15px 5px';
+            submenuContainer.style.borderRadius = '0 0 10px 10px';
+
+            submenus.forEach(sub => {
+                const subEl = document.createElement('div');
+                subEl.className = 'menu-item sub-item';
+                subEl.style.margin = '0';
+                subEl.style.paddingLeft = '45px';
+                subEl.style.fontSize = '13px';
+                subEl.innerHTML = `<span>${sub.title}</span>`;
+                subEl.onclick = (e) => {
+                    e.stopPropagation();
+                    loadModuleByUrl(sub.title, sub.url);
+                    // 활성화 표시
+                    document.querySelectorAll('.sub-item').forEach(s => s.classList.remove('active'));
+                    subEl.classList.add('active');
+                };
+                submenuContainer.appendChild(subEl);
+            });
+
+            parentEl.after(submenuContainer);
+            parentEl.classList.add('has-submenu-active');
+        }
+
+        function loadModuleByUrl(title, url) {
+            document.getElementById('page-title').textContent = title;
+            const breadcrumb = document.getElementById('breadcrumb-current');
+            if (breadcrumb) breadcrumb.textContent = title;
+
+            const loading = document.getElementById('loading');
+            const iframe = document.getElementById('content-iframe');
+            loading.style.display = 'flex';
+            iframe.style.display = 'none';
+            iframe.onload = () => {
+                loading.style.display = 'none';
+                iframe.style.display = 'block';
+            }
+            iframe.src = url;
+        }
+
+
+
+        // 컴퓨터 인증 확인
+        async function checkComputerAccess() {
+            const savedKey = localStorage.getItem('sinbang-computer-key');
+
+            if (!savedKey) {
+                window.location.href = '/computer-register.html';
+                return false;
+            }
+
+            try {
+                const response = await fetch('/api/computer/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        key: savedKey
+                    })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    computerInfo = result.computer;
+                    allowedMenus = result.allowedMenus;
+
+                    // 저장 업데이트
+                    localStorage.setItem('sinbang-computer-info', JSON.stringify(computerInfo));
+                    localStorage.setItem('sinbang-allowed-menus', JSON.stringify(allowedMenus));
+
+                    return true;
+                } else {
+                    // 키가 유효하지 않으면 재등록
+                    localStorage.removeItem('sinbang-computer-key');
+                    window.location.href = '/computer-register.html';
+                    return false;
+                }
+            } catch (error) {
+                console.error('인증 확인 실패:', error);
+                // 오프라인인 경우 캐시된 정보 사용
+                const cachedInfo = localStorage.getItem('sinbang-computer-info');
+                const cachedMenus = localStorage.getItem('sinbang-allowed-menus');
+
+                if (cachedInfo && cachedMenus) {
+                    computerInfo = JSON.parse(cachedInfo);
+                    allowedMenus = JSON.parse(cachedMenus);
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
+        // 관리자 메뉴 추가
+        function addAdminMenu() {
+            const menu = document.getElementById('sidebar-menu');
+            if (!menu) return;
+
+            // 이미 있으면 스킵
+            if (document.querySelector('[data-module="computer-admin"]')) return;
+
+            const adminMenuItem = document.createElement('div');
+            adminMenuItem.className = 'menu-item';
+            adminMenuItem.setAttribute('data-module', 'computer-admin');
+            adminMenuItem.innerHTML = ` <span class="menu-icon">🖥️</span><span>컴퓨터 관리</span>`;
+
+            adminMenuItem.addEventListener('click', (e) => {
+                loadModule('computer-admin', e);
+            });
+
+            menu.appendChild(adminMenuItem);
+        }
+
+        // 컴퓨터 이름 표시
+        function updateComputerName() {
+            const header = document.querySelector('.sidebar-header p');
+
+            if (header && computerInfo) {
+                header.textContent = computerInfo.name;
+            }
+        }
+
+        function toggleSubmenu(element) {
+            const submenu = element.nextElementSibling;
+            const arrow = element.querySelector('.submenu-arrow');
+
+            if (submenu && submenu.classList.contains('submenu')) {
+                if (submenu.style.display === 'none') {
+                    submenu.style.display = 'block';
+                    if (arrow) arrow.textContent = '▲';
+                } else {
+                    submenu.style.display = 'none';
+                    if (arrow) arrow.textContent = '▼';
+                }
+            }
+        }
+
+        function loadModule(moduleName, event) {
+            if (moduleName === 'upcoming') return;
+
+            // 차트 정리기는 새 창으로 열기
+            if (moduleName === 'chart-organizer') {
+                window.open('/chart-organizer.html', '_blank');
+                return;
+            }
+
+            // External Link Handling
+            const targetItem = document.querySelector(`.menu-item[data-module="${moduleName}"]`);
+
+            if (targetItem && targetItem.getAttribute('data-external') === 'true') {
+                const url = targetItem.getAttribute('data-url');
+
+                if (url) {
+                    window.open(url, '_blank');
+                }
+
+                return;
+            }
+
+            const module = modules[moduleName];
+            if (!module) return;
+
+            // UI 업데이트
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            } else {
+                // 이벤트가 없거나 target이 명확하지 않을 때 (초기 로드 등)
+                // 현재 모듈에 맞는 메뉴 아이템 활성화 logic could go here if needed, 
+                // but usually renderMenu is called before loadModule on init, so we might need selector
+                const activeItem = document.querySelector(`.menu-item[data-module="${moduleName}"]`);
+                if (activeItem) activeItem.classList.add('active');
+            }
+
+            document.getElementById('page-title').textContent = module.title;
+            const breadcrumb = document.getElementById('breadcrumb-current');
+            if (breadcrumb) breadcrumb.textContent = module.title;
+
+            // 헤더 루틴 요약 업데이트
+            updateHeaderRoutineSummary(moduleName);
+
+            // iframe 로드
+            const loading = document.getElementById('loading');
+            const iframe = document.getElementById('content-iframe');
+
+            loading.style.display = 'flex';
+            iframe.style.display = 'none';
+
+            iframe.onload = () => {
+                loading.style.display = 'none';
+                iframe.style.display = 'block';
+            }
+
+            iframe.src = module.url;
+        }
+
+        async function updateHeaderRoutineSummary(moduleName) {
+            const container = document.getElementById('header-routine-summary');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const rightContainer = document.createElement('div');
+            rightContainer.style.cssText = 'margin-left: auto; display: flex; align-items: center; gap: 8px;';
+
+            container.appendChild(rightContainer);
+        }
+
+        // 초기화
+        async function init() {
+            const hasAccess = await checkComputerAccess();
+
+            if (hasAccess) {
+
+                renderMenu(); // 초기 메뉴 렌더링
+                updateComputerName();
+                loadModule('dashboard');
+            }
+        }
+
+        init();
+    </script>
+    <!-- Medical Waste Modal HTML -->
+    <div id="medical-waste-modal" class="mw-modal-overlay">
+        <div class="mw-modal-content">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                <h3 style="margin: 0; color: #2c3e50;">🗑️ 의료폐기물 관리</h3><button onclick="closeMedicalWasteModal()"
+                    style="background: none; border: none; font-size: 24px; color: #999; cursor: pointer;">×</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div><label
+                        style="display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 5px;">날짜</label><input
+                        type="date" id="mw-date"
+                        style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;"></div>
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;"><label
+                            style="display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 5px;">상자
+                            수 (개)</label><input type="number" id="mw-boxes" value="0" min="0"
+                            style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+                    </div>
+                    <div style="flex: 1;"><label
+                            style="display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 5px;">침통
+                            수 (개)</label><input type="number" id="mw-containers" value="0" min="0"
+                            style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+                    </div>
+                </div><button onclick="saveMedicalWaste()"
+                    style="width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; transition: transform 0.2s;">저장하기</button>
+            </div>
+        </div>
+    </div>
+    <script> // Medical Waste Functions
+
+        function openMedicalWasteModal() {
+            const now = new Date();
+            const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+            const dateStr = koreaTime.toISOString().slice(0, 10);
+
+            document.getElementById('mw-date').value = dateStr;
+            document.getElementById('mw-boxes').value = 0;
+            document.getElementById('mw-containers').value = 0;
+
+            // Try to fetch existing data for defaults
+            fetch('/api/medical-waste').then(res => res.json()).then(result => {
+                if (result.success) {
+                    const entry = result.data.find(w => w.date === dateStr);
+
+                    if (entry) {
+                        document.getElementById('mw-boxes').value = entry.boxes;
+                        document.getElementById('mw-containers').value = entry.containers;
+                    }
+                }
+            }).catch(e => console.error(e));
+
+            document.getElementById('medical-waste-modal').style.display = 'flex';
+        }
+
+        function closeMedicalWasteModal() {
+            document.getElementById('medical-waste-modal').style.display = 'none';
+        }
+
+        async function saveMedicalWaste() {
+            const date = document.getElementById('mw-date').value;
+            const boxes = document.getElementById('mw-boxes').value;
+            const containers = document.getElementById('mw-containers').value;
+
+            if (!date) return alert('날짜를 입력하세요.');
+
+            try {
+                const res = await fetch('/api/medical-waste', {
+
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+
+                    ,
+                    body: JSON.stringify({
+                        date, boxes, containers
+                    })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    alert('저장되었습니다.');
+                    closeMedicalWasteModal();
+                    updateHeaderRoutineSummary('dashboard');
+                }
+
+                else {
+                    alert('오류: ' + result.message);
+                }
+            }
+
+            catch (e) {
+                alert('저장 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function markMedicalWasteCollected() {
+            if (!confirm('오늘 의료폐기물을 수거 처리하시겠습니까?')) return;
+
+            const now = new Date();
+            const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+            const dateStr = koreaTime.toISOString().slice(0, 10);
+
+            try {
+                const res = await fetch('/api/medical-waste/collect', {
+
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+
+                    ,
+                    body: JSON.stringify({
+                        date: dateStr
+                    })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    alert('수거 완료 처리되었습니다.');
+                    updateHeaderRoutineSummary('dashboard');
+                }
+
+                else {
+                    alert('처리 실패: ' + result.message);
+                }
+            }
+
+            catch (e) {
+                alert('오류가 발생했습니다.');
+            }
+        }
+
+
+    </script>
+
+    <!-- Daily Terminal Total Modal -->
+    <div id="daily-total-modal" class="mw-modal-overlay">
+        <div class="mw-modal-content">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                <h3 style="margin: 0; color: #2c3e50;">💳 단말기 일일 정산</h3>
+                <button onclick="closeDailyTotalModal()"
+                    style="background: none; border: none; font-size: 24px; color: #999; cursor: pointer;">×</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <label
+                        style="display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 5px;">날짜</label>
+                    <input type="date" id="dt-date"
+                        style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+                </div>
+                <div>
+                    <label
+                        style="display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 5px;">일일 총
+                        합계 (원)</label>
+                    <input type="text" id="dt-amount" placeholder="금액 입력"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');"
+                        style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: bold; text-align: right;">
+                </div>
+                <button onclick="saveDailyTotal()"
+                    style="width: 100%; padding: 14px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; transition: transform 0.2s;">
+                    저장하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Daily Total Functions
+        function openDailyTotalModal() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
+
+            document.getElementById('dt-date').value = dateStr;
+            document.getElementById('dt-amount').value = '';
+
+            // Fetch existing if any
+            fetch(`/api/card-sales/daily-total/${dateStr}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.total > 0) {
+                        document.getElementById('dt-amount').value = data.total.toLocaleString();
+                    }
+                })
+                .catch(console.error);
+
+            document.getElementById('daily-total-modal').style.display = 'flex';
+            setTimeout(() => document.getElementById('dt-amount').focus(), 100);
+        }
+
+        function closeDailyTotalModal() {
+            document.getElementById('daily-total-modal').style.display = 'none';
+        }
+
+        async function saveDailyTotal() {
+            const date = document.getElementById('dt-date').value;
+            const amountStr = document.getElementById('dt-amount').value.replace(/,/g, '');
+
+            if (!date || !amountStr) return alert('날짜와 금액을 모두 입력해주세요.');
+
+            try {
+                const res = await fetch('/api/card-sales/daily-total', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, amount: amountStr })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    alert('저장되었습니다.');
+                    closeDailyTotalModal();
+                    updateHeaderRoutineSummary('dashboard'); // Refresh header
+                } else {
+                    alert('오류: ' + result.message);
+                }
+            } catch (e) {
+                alert('저장 중 오류가 발생했습니다.');
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,2349 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대시보드 - 신방한의원 OS</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: none;
+            margin: 0 auto;
+        }
+
+        /* 환자 검색 */
+        .search-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 25px;
+            color: white;
+        }
+
+        .search-section h2 {
+            margin-bottom: 15px;
+            font-size: 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .search-section h2 .header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .search-section h2 .header-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .search-section h2 .header-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 네이버 동기화 버튼 스타일 (이미지 기반) */
+        .sync-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .naver-sync-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: #03C75A;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 900;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .naver-sync-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .sync-time {
+            font-size: 11px;
+            color: #03C75A;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 10px;
+            position: relative;
+        }
+
+        .search-container input {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-container input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 0 0 10px 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .search-dropdown.show {
+            display: block;
+        }
+
+        .search-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .search-item:hover,
+        .search-item.active {
+            background-color: #f1f5f9;
+            border-left: 4px solid #667eea;
+        }
+
+        .search-item .name {
+            font-weight: 600;
+        }
+
+        .search-item .info {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        /* 오늘의 통계 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px 25px;
+            /* 상하 패딩 약간 축소 */
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            flex-shrink: 0;
+            /* 아이콘 찌그러짐 방지 */
+        }
+
+        .stat-icon.booking {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .stat-icon.payment {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+
+
+        .stat-icon.message {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+
+        .stat-content {
+            flex: 1;
+            /* 남은 공간 차지 */
+            min-width: 0;
+            /* 텍스트 줄바꿈 허용 */
+        }
+
+        .stat-content h3 {
+            font-size: 26px;
+            /* 폰트 사이즈 약간 축소 */
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 5px;
+            white-space: nowrap;
+        }
+
+        .stat-content p {
+            font-size: 13px;
+            /* 폰트 사이즈 축소 */
+            color: #6b7280;
+            line-height: 1.4;
+            word-break: keep-all;
+            /* 단어 단위 줄바꿈 */
+        }
+
+        /* 섹션 스타일 */
+        .section {
+            background: white;
+            border-radius: 14px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-header h3 {
+            font-size: 18px;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 오늘의 예약 */
+        .booking-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .booking-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: #f9fafb;
+            border-radius: 8px;
+            gap: 8px;
+            min-height: 44px;
+            /* Ensure minimum touch target but compact */
+        }
+
+        .booking-time {
+            font-size: 14px;
+            font-weight: 700;
+            color: #667eea;
+            min-width: 42px;
+            text-align: center;
+        }
+
+        .booking-info {
+            flex: 1;
+            min-width: 0;
+            /* text-overflow 작동을 위해 중요 */
+        }
+
+        .booking-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .booking-purpose {
+            font-size: 11px;
+            color: #6b7280;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 환자 상세 정보 (숨김 상태) */
+        .patient-detail {
+            display: none;
+            padding-bottom: 50px;
+        }
+
+        .patient-detail.show {
+            display: block;
+        }
+
+        .patient-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 25px rgba(118, 75, 162, 0.2);
+        }
+
+        .patient-header h2 {
+            font-size: 28px;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .patient-header-info {
+            display: flex;
+            gap: 25px;
+            font-size: 15px;
+            opacity: 0.9;
+            margin-top: 15px;
+            align-items: center;
+        }
+
+        .back-btn-container {
+            margin-bottom: 15px;
+        }
+
+        .back-btn {
+            background: #f3f4f6;
+            color: #4b5563;
+            border: 1px solid #e5e7eb;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: #e5e7eb;
+            transform: translateX(-5px);
+        }
+
+        .checkin-btn-large {
+            padding: 14px 28px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            transition: all 0.2s;
+        }
+
+        .checkin-btn-large:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        .detail-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f0f0f0;
+        }
+
+        .detail-card.full-width {
+            grid-column: span 2;
+        }
+
+        .detail-card h4 {
+            font-size: 18px;
+            color: #1f2937;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+        }
+
+        .detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .detail-item {
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 12px;
+            font-size: 14.5px;
+            border: 1px solid #f1f5f9;
+        }
+
+        .detail-item .date {
+            color: #4f46e5;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .detail-item .content {
+            color: #475569;
+            line-height: 1.5;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #94a3b8;
+            padding: 40px;
+            font-size: 15px;
+            font-style: italic;
+        }
+
+        /* 메모 섹션 */
+        .memo-box {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .memo-textarea {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #f1f5f9;
+            border-radius: 12px;
+            font-size: 15px;
+            resize: vertical;
+            min-height: 120px;
+            line-height: 1.5;
+            transition: border-color 0.2s;
+        }
+
+        .memo-textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .memo-save-btn {
+            padding: 0 25px;
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .memo-save-btn:hover {
+            background: #4f46e5;
+        }
+
+        /* 스크롤 가능한 리스트 */
+        .scrollable-list {
+            max-height: 400px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f8fafc;
+        }
+
+        .scrollable-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollable-list::-webkit-scrollbar-track {
+            background: #f8fafc;
+            border-radius: 10px;
+        }
+
+        .scrollable-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+            border: 2px solid #f8fafc;
+        }
+
+        .scrollable-list::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- 오늘의 개요 (모든 목록 통합) -->
+        <div id="overview-section">
+            <!-- 환자 검색 -->
+            <div class="search-section">
+                <h2>
+                    <span>🔍 환자 검색</span>
+                    <div class="header-buttons">
+                        <div class="sync-group">
+                            <button class="naver-sync-btn" id="naver-sync-btn" onclick="triggerNaverSync()"
+                                title="네이버 동기화">N</button>
+                            <span class="sync-time" id="sync-time-display">최근: -</span>
+                        </div>
+                        <button class="header-btn" onclick="location.href='/jabo-management.html'"
+                            style="background: #2563eb; color: white; margin-left: 5px;">🚗 자보</button>
+
+                        <button class="header-btn" onclick="openRejectListModal()"
+                            style="background: #ef4444; color: white;">🚫 수신거부</button>
+                        <button class="header-btn" onclick="openDeliveryModal()"
+                            style="background: #1a1a2e; color: white;">📦 택배</button>
+                        <button class="header-btn" onclick="location.href='/booking_calendar.html'"
+                            style="background: #4f46e5; color: white; margin-left: 5px;">📅 예약</button>
+                        <button class="header-btn" onclick="location.href='/visit_calendar.html'"
+                            style="background: #10b981; color: white; margin-left: 5px;">🏥 내원</button>
+                        <button class="header-btn" onclick="location.href='/receipt-book.html'"
+                            style="background: #4f46e5; color: white; margin-left: 5px;">💰 장부</button>
+                        <button class="header-btn" onclick="openApiKeyModal()"
+                            style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; margin-left: 4px;">⚙️</button>
+                    </div>
+                </h2>
+                <div class="search-container">
+                    <input type="text" id="patient-search" placeholder="환자 이름, 차트번호로 검색..." autocomplete="off">
+                    <div class="search-dropdown" id="search-dropdown"></div>
+                </div>
+            </div>
+
+            <!-- 오늘의 통계 -->
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon booking">📅</div>
+                    <div class="stat-content">
+                        <h3 id="stat-booking">-</h3>
+                        <p>오늘 예약</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon message">📱</div>
+                    <div class="stat-content">
+                        <h3 id="stat-message">-</h3>
+                        <p id="stat-message-detail">이번 달 문자</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 예약/내원 좌우 분할 (컨테이너 내부로 이동) -->
+            <div style="display: flex; gap: 20px;">
+                <!-- 오늘의 예약 (1) -->
+                <div class="section" style="flex: 1; min-width: 280px;">
+                    <div class="section-header">
+                        <h3>📅 오늘의 예약</h3>
+                    </div>
+                    <div class="booking-list" id="today-bookings" style="max-height: 400px; overflow-y: auto;">
+                        <p class="no-data">예약 정보를 불러오는 중...</p>
+                    </div>
+                </div>
+
+                <!-- 오늘 내원 환자 (2) -->
+                <div class="section" style="flex: 2;">
+                    <div class="section-header">
+                        <h3>🏥 오늘 내원 환자</h3>
+                        <div
+                            style="display: flex; gap: 8px; align-items: center; font-size: 10px; color: #666; margin-left: auto;">
+                            <span
+                                style="background: #3b82f6; color: white; padding: 2px 5px; border-radius: 3px;">📅예약</span>
+                            <span
+                                style="background: #667eea; color: white; padding: 2px 5px; border-radius: 3px;">📋상세</span>
+                            <span
+                                style="background: #fbbf24; color: #333; padding: 2px 5px; border-radius: 3px;">💬알림톡</span>
+                        </div>
+                        <span id="visit-count" style="font-size: 14px; color: #667eea;">0명</span>
+                    </div>
+                    <div class="booking-list" id="today-visits-list" style="max-height: 400px; overflow-y: auto;">
+                        <p class="no-data">내원 환자가 없습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 환자 상세 정보 -->
+    <div id="patient-detail" class="patient-detail">
+        <div class="back-btn-container">
+            <button class="back-btn" onclick="showOverview()">← 대시보드로 돌아가기</button>
+        </div>
+        <div class="patient-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 id="patient-name">환자명</h2>
+                    <div class="patient-header-info">
+                        <span id="patient-chart">차트번호: -</span>
+                        <span id="patient-phone">연락처: -</span>
+                        <span id="patient-birth">생년월일: -</span>
+                        <label
+                            style="display: flex; align-items: center; gap: 8px; color: white; cursor: pointer; font-weight: 600;">
+                            <input type="checkbox" id="patient-kakao-toggle" style="width: 18px; height: 18px;"
+                                onchange="updateKakaoStatus(this.checked)">
+                            <span>카카오톡 사용 안 함</span>
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 8px; color: white; cursor: pointer; font-weight: 600; margin-left: 10px;">
+                            <input type="checkbox" id="patient-sms-reject-toggle" style="width: 18px; height: 18px;"
+                                onchange="updateSmsRejectStatus(this.checked)">
+                            <span style="color: #ffcccc;">문자 수신 거부</span>
+                        </label>
+                    </div>
+                </div>
+                <button onclick="checkInPatient()" id="checkin-btn" class="checkin-btn-large">
+                    🏥 내원 등록
+                </button>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <!-- 환자 메모 (전폭) -->
+            <div class="detail-card full-width">
+                <h4>📝 환자 메모</h4>
+                <div class="memo-box">
+                    <textarea id="memo-input" class="memo-textarea" placeholder="환자 특이사항이나 메모를 입력하세요..."></textarea>
+                    <button onclick="saveMemo()" class="memo-save-btn">💾 저장</button>
+                </div>
+                <div id="memo-list" class="scrollable-list" style="max-height: 500px; overflow-y: auto !important;">
+                    <p class="no-data">메모가 없습니다.</p>
+                </div>
+            </div>
+
+            <!-- 예약 이력 -->
+            <div class="detail-card">
+                <h4>📅 예약 이력</h4>
+                <div class="detail-list scrollable-list" id="patient-bookings">
+                    <p class="no-data">로딩 중...</p>
+                </div>
+            </div>
+
+            <!-- 문자/알림톡 -->
+            <div class="detail-card">
+                <h4>💬 문자/알림톡</h4>
+                <div class="detail-list scrollable-list" id="patient-messages">
+                    <p class="no-data">로딩 중...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- 빠른 예약 모달 -->
+    <div id="quick-booking-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div
+            style="background: white; padding: 25px; border-radius: 16px; width: 350px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+            <h3 id="qb-modal-title" style="margin: 0 0 20px 0; color: #1f2937;">📅 빠른 예약</h3>
+            <input type="hidden" id="qb-booking-id">
+            <input type="hidden" id="qb-patient-id">
+            <input type="hidden" id="qb-patient-name">
+            <input type="hidden" id="qb-chart-no">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4b5563;">환자명</label>
+                <div id="qb-display-name"
+                    style="padding: 10px; background: #f3f4f6; border-radius: 8px; color: #1f2937;"></div>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4b5563;">예약일</label>
+                <input type="date" id="qb-date"
+                    style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4b5563;">예약시간</label>
+                <select id="qb-time"
+                    style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                    <option value="">시간 선택</option>
+                    <optgroup label="☀️ 오전" style="color: #4b5ea8;">
+                        <option value="09:00" style="color: #4b5ea8;">09:00</option>
+                        <option value="09:30" style="color: #4b5ea8;">09:30</option>
+                        <option value="10:00" style="color: #4b5ea8;">10:00</option>
+                        <option value="10:30" style="color: #4b5ea8;">10:30</option>
+                        <option value="11:00" style="color: #4b5ea8;">11:00</option>
+                        <option value="11:30" style="color: #4b5ea8;">11:30</option>
+                        <option value="12:00" style="color: #4b5ea8;">12:00</option>
+                    </optgroup>
+                    <optgroup label="☕ 오후" style="color: #b85c2f;">
+                        <option value="14:00" style="color: #b85c2f;">14:00</option>
+                        <option value="14:30" style="color: #b85c2f;">14:30</option>
+                        <option value="15:00" style="color: #b85c2f;">15:00</option>
+                        <option value="15:30" style="color: #b85c2f;">15:30</option>
+                        <option value="16:00" style="color: #b85c2f;">16:00</option>
+                        <option value="16:30" style="color: #b85c2f;">16:30</option>
+                        <option value="17:00" style="color: #b85c2f;">17:00</option>
+                        <option value="17:30" style="color: #b85c2f;">17:30</option>
+                        <option value="18:00" style="color: #b85c2f;">18:00</option>
+                        <option value="18:30" style="color: #b85c2f;">18:30</option>
+                        <option value="19:00" style="color: #b85c2f;">19:00</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4b5563;">메모 (선택)</label>
+                <textarea id="qb-memo" placeholder="예약 메모를 입력하세요..."
+                    style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box; resize: vertical; min-height: 80px; font-family: inherit;"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="hideQuickBooking()"
+                    style="flex: 1; padding: 12px; background: #e5e7eb; color: #4b5563; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">취소</button>
+                <button onclick="submitQuickBooking()"
+                    style="flex: 1; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">예약
+                    등록</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR 코드 모달 -->
+    <div id="qr-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
+        <div
+            style="background: white; padding: 30px; border-radius: 20px; width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align: center;">
+            <h3 style="margin: 0 0 10px 0; color: #1f2937;">📋 설문지 QR 코드</h3>
+            <p id="qr-patient-label" style="color: #667eea; font-weight: 600; margin-bottom: 5px;"></p>
+            <p id="qr-survey-name" style="color: #6b7280; font-size: 14px; margin-bottom: 20px;"></p>
+            <div id="qr-code-container" style="display: flex; justify-content: center; margin-bottom: 15px;"></div>
+            <p style="color: #9ca3af; font-size: 12px; margin-bottom: 20px;">⏱ QR 유효시간: 5분</p>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="openSurveyNewWindow()"
+                    style="flex: 1; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">새
+                    창에서 열기</button>
+                <button onclick="closeQrModal()"
+                    style="flex: 1; padding: 12px; background: #e5e7eb; color: #4b5563; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 택배 발송 모달 -->
+    <div id="delivery-quick-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
+        <div
+            style="background: white; padding: 25px; border-radius: 12px; width: 480px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; font-family: 'Pretendard', sans-serif;">
+            <!-- 헤더 -->
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee;">
+                <h3
+                    style="margin: 0; color: #333; font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    📦 택배 배송조회 알림톡
+                </h3>
+                <span onclick="closeDeliveryModal()"
+                    style="cursor: pointer; color: #999; font-size: 24px;">&times;</span>
+            </div>
+
+            <!-- 환자 검색 -->
+            <div style="margin-bottom: 20px; position: relative;" class="search-container">
+                <label style="display: block; margin-bottom: 10px; font-weight: 700; color: #555; font-size: 15px;">환자
+                    검색</label>
+                <input type="text" id="dv-patient-search" onkeyup="filterDeliveryPatient()"
+                    placeholder="이름, 차트번호, 연락처 입력"
+                    style="width: 100%; padding: 12px 15px; border: 2px solid #333; border-radius: 8px; font-size: 15px; box-sizing: border-box; font-weight: 600;">
+                <div class="search-dropdown" id="dv-patient-dropdown"
+                    style="top: 100%; width: 100%; border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #ddd;">
+                </div>
+                <input type="hidden" id="dv-patient-id">
+                <input type="hidden" id="dv-patient-phone">
+                <input type="hidden" id="dv-patient-chart">
+                <input type="hidden" id="dv-patient-name-raw">
+            </div>
+
+            <!-- 상품 검색 -->
+            <div style="margin-bottom: 20px; position: relative;" class="search-container">
+                <label style="display: block; margin-bottom: 10px; font-weight: 400; color: #555; font-size: 15px;">배송
+                    물품 입력</label>
+                <input type="text" id="dv-product-search"
+                    placeholder="상품명 입력(ex, 경옥고)"
+                    style="width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; color: #777;">
+            </div>
+
+            <!-- 하단 2열 레이아웃 -->
+            <div style="display: flex; gap: 15px; margin-bottom: 30px;">
+                <div style="flex: 2;">
+                    <label
+                        style="display: block; margin-bottom: 10px; font-weight: 700; color: #555; font-size: 15px;">송장번호</label>
+                    <input type="text" id="dv-tracking-no" placeholder="숫자만 입력"
+                        style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box;">
+                </div>
+                <div style="flex: 1;">
+                    <label
+                        style="display: block; margin-bottom: 10px; font-weight: 700; color: #555; font-size: 15px;">택배사</label>
+                    <select id="dv-carrier"
+                        style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; background: white; appearance: none; -webkit-appearance: none;">
+                        <option value="16" selected>한의사랑</option>
+                        <option value="06">로젠택배</option>
+                        <option value="01">우체국</option>
+                        <option value="04">CJ대한통운</option>
+                        <option value="05">한진택배</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 버튼 그룹 -->
+            <div style="display: flex; gap: 10px;">
+                <button onclick="window.open(generateDeliveryLink(), '_blank')"
+                    style="flex: 1; padding: 16px; background: #f1f5f9; color: #475569; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    🔍 미리보기
+                </button>
+                <button onclick="copyAndOpenMsg()"
+                    style="flex: 2; padding: 16px; background: #27ae60; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.2);">
+                    🚀 알림톡 발송
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API 키 설정 모달 -->
+    <div id="api-key-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center;">
+        <div
+            style="background: white; padding: 30px; border-radius: 16px; width: 450px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); position: relative;">
+            <h3
+                style="margin: 0 0 20px 0; color: #1a1a2e; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                ⚙️ API 키 관리 및 갱신
+            </h3>
+
+            <div style="margin-bottom: 20px;">
+                <label
+                    style="display: block; margin-bottom: 8px; font-weight: 700; color: #555; font-size: 14px;">VWorld
+                    API Key (주소 검색)</label>
+                <input type="text" id="setting-vworld-key" placeholder="VWorld 키 입력..."
+                    style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                <p style="font-size: 11px; color: #999; margin: 5px 0 0 0;">* 주소 검색 기능에 사용됩니다.</p>
+            </div>
+
+            <div style="margin-bottom: 30px;">
+                <label
+                    style="display: block; margin-bottom: 8px; font-weight: 700; color: #555; font-size: 14px;">SweetTracker
+                    API Key (택배 조회)</label>
+                <input type="text" id="setting-sweet-key" placeholder="스마트택배 키 입력..."
+                    style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                <p style="font-size: 11px; color: #999; margin: 5px 0 0 0;">* 알림톡 배송 조회 링크 생성에 사용됩니다.</p>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button onclick="closeApiKeyModal()"
+                    style="flex: 1; padding: 14px; background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; border-radius: 10px; cursor: pointer; font-weight: 600;">취소</button>
+                <button onclick="saveApiKeySettings()"
+                    style="flex: 1; padding: 14px; background: #1a1a2e; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600;">저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 수신거부 환자 관리 모달 -->
+    <div id="reject-list-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
+        <div
+            style="background: white; padding: 25px; border-radius: 16px; width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; color: #1f2937;">🚫 수신 거부 환자 관리</h3>
+                <span onclick="closeRejectListModal()"
+                    style="cursor: pointer; font-size: 24px; color: #94a3b8;">&times;</span>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">설정된 환자는 올톡 발송 명단에서 제외되거나 경고가 표시됩니다.</p>
+
+            <div id="reject-list-container"
+                style="max-height: 500px; overflow-y: auto; border: 1px solid #f1f5f9; border-radius: 8px;">
+                <p class="no-data" style="padding: 20px; text-align: center; color: #94a3b8;">로딩 중...</p>
+            </div>
+
+            <div style="margin-top: 20px; text-align: right;">
+                <button onclick="closeRejectListModal()"
+                    style="padding: 10px 20px; background: #f1f5f9; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 개별 환자 수납 모달 -->
+    <div id="receipt-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 25px; border-radius: 16px; width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+            <h3 id="receipt-modal-title" style="margin: 0 0 20px 0; color: #1f2937;">💰 수납 입력</h3>
+            <input type="hidden" id="receipt-id">
+            <input type="hidden" id="receipt-visit-id">
+            <input type="hidden" id="receipt-patient-id">
+            <input type="hidden" id="receipt-chart-no">
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4b5563;">환자명</label>
+                <div id="receipt-display-name" style="padding: 10px; background: #f3f4f6; border-radius: 8px; color: #1f2937; font-weight: 700;"></div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4b5563;">환자 구분</label>
+                <div id="receipt-type-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <button type="button" class="type-btn" onclick="setReceiptType('건보')" style="padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer;">건보</button>
+                    <button type="button" class="type-btn" onclick="setReceiptType('자보')" style="padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer;">자보</button>
+                    <button type="button" class="type-btn" onclick="setReceiptType('급여')" style="padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer;">급여</button>
+                    <button type="button" class="type-btn" onclick="setReceiptType('한약')" style="padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer;">한약</button>
+                </div>
+                <input type="hidden" id="receipt-type">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4b5563;">시술내용</label>
+                <input type="text" id="receipt-details" placeholder="시술 내용 등 입력" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4b5563;">현금 수납</label>
+                <input type="text" id="receipt-cash" placeholder="0" oninput="formatAmountInput(this)" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; text-align: right; box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4b5563;">카드 수납</label>
+                <input type="text" id="receipt-card" placeholder="0" oninput="formatAmountInput(this); toggleCardNameInput(this.value)" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; text-align: right; box-sizing: border-box;">
+            </div>
+
+            <div id="receipt-card-name-group" style="margin-bottom: 20px; display: none;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #4b5563;">카드사</label>
+                <input type="text" id="receipt-card-name" placeholder="카드사 입력" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button onclick="closeReceiptModal()" style="flex: 1; padding: 12px; background: #e5e7eb; color: #4b5563; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">취소</button>
+                <button onclick="saveReceipt()" style="flex: 1; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .type-btn.active {
+            background: #4f46e5 !important;
+            color: white !important;
+            border-color: #4f46e5 !important;
+            font-weight: 700;
+        }
+    </style>
+
+    <script src="/js/delivery.js"></script>
+    <script>
+        let patients = [];
+        let selectedPatient = null;
+
+
+        // 초기화
+        async function init() {
+            await loadPatients();
+            await loadDashboardStats();
+            await loadTodayBookings();
+            await loadTodayVisits();
+
+            // Socket.io 실시간 동기화
+            const socket = io();
+            socket.on('visits:update', () => {
+                console.log('[Socket.io] 내원 현황 변경 감지');
+                loadTodayVisits();
+                loadDashboardStats();
+            });
+            socket.on('bookings:update', () => {
+                console.log('[Socket.io] 예약 현황 변경 감지');
+                loadTodayBookings();
+                loadDashboardStats();
+            });
+            socket.on('patients:update', () => {
+                console.log('[Socket.io] 환자 정보 변경 감지');
+                loadPatients();
+            });
+            socket.on('sync:complete', (data) => {
+                console.log('[Socket.io] 네이버 동기화 완료 감지');
+                updateLastSyncTime();
+                loadTodayBookings();
+                if (document.visibilityState === 'visible') {
+                    alert('✅ ' + (data.message || '네이버 동기화가 완료되었습니다.'));
+                }
+            });
+
+            socket.on('sync:error', (data) => {
+                console.error('[Socket.io] 네이버 동기화 오류 감지:', data);
+                if (document.visibilityState === 'visible') {
+                    if (data.message && (data.message.includes('로그인') || data.message.includes('세션'))) {
+                        if (confirm('네이버 로그인이 필요합니다. 로그인 창을 여시겠습니까?')) {
+                            naverLogin();
+                        }
+                    } else {
+                        alert('❌ 동기화 실패: ' + (data.message || '알 수 없는 오류'));
+                    }
+                }
+            });
+
+            // 페이지 이탈 시 소켓 정리
+            window.addEventListener('beforeunload', () => {
+                socket.disconnect();
+            });
+
+            // 최근 동기화 시간 로드 (로컬 스토리지)
+            const lastSync = localStorage.getItem('lastNaverSync');
+            if (lastSync) {
+                document.getElementById('sync-time-display').textContent = `최근: ${lastSync}`;
+            }
+        }
+
+        // 환자 목록 로드
+        async function loadPatients() {
+            try {
+                const response = await fetch('/api/patients');
+                const result = await response.json();
+                if (result.success) {
+                    patients = result.data;
+                }
+            } catch (error) {
+                console.error('환자 목록 로드 실패:', error);
+            }
+        }
+
+        // ==========================================
+        // 수납(장부) 관리 로직
+        // ==========================================
+        async function openReceiptModal(visitId, patientId, name, chartNo) {
+            document.getElementById('receipt-id').value = '';
+            document.getElementById('receipt-visit-id').value = visitId;
+            document.getElementById('receipt-patient-id').value = patientId;
+            document.getElementById('receipt-chart-no').value = chartNo;
+            document.getElementById('receipt-display-name').textContent = `${name} (${chartNo || '-'})`;
+            
+            // 초기화
+            document.getElementById('receipt-cash').value = '';
+            document.getElementById('receipt-card').value = '';
+            document.getElementById('receipt-card-name').value = '';
+            document.getElementById('receipt-card-name-group').style.display = 'none';
+            document.getElementById('receipt-details').value = '';
+            document.getElementById('receipt-type').value = '';
+            document.querySelectorAll('.type-btn').forEach(btn => btn.classList.remove('active'));
+
+            // 기존 데이터 조회
+            try {
+                const res = await fetch('/api/receipt-book/receipts/visit/' + visitId);
+                const result = await res.json();
+                if (result.success && result.data) {
+                    const r = result.data;
+                    document.getElementById('receipt-id').value = r.id;
+                    document.getElementById('receipt-cash').value = r.cashAmount ? r.cashAmount.toLocaleString() : '';
+                    document.getElementById('receipt-card').value = r.cardAmount ? r.cardAmount.toLocaleString() : '';
+                    document.getElementById('receipt-card-name').value = r.cardName || '';
+                    document.getElementById('receipt-details').value = r.procedureDetails || '';
+                    document.getElementById('receipt-type').value = r.type || '';
+                    
+                    const types = (r.type || '').split(',').filter(t => t);
+                    document.querySelectorAll('.type-btn').forEach(btn => {
+                        if (types.includes(btn.textContent)) btn.classList.add('active');
+                    });
+                    
+                    toggleCardNameInput(document.getElementById('receipt-card').value);
+                }
+            } catch (e) {
+                console.error('기존 수납 정보 로드 실패:', e);
+            }
+
+            document.getElementById('receipt-modal').style.display = 'flex';
+        }
+
+        function closeReceiptModal() {
+            document.getElementById('receipt-modal').style.display = 'none';
+        }
+
+        function setReceiptType(type) {
+            const input = document.getElementById('receipt-type');
+            let selectedTypes = input.value ? input.value.split(',').filter(t => t) : [];
+            
+            if (selectedTypes.includes(type)) {
+                selectedTypes = selectedTypes.filter(t => t !== type);
+            } else {
+                selectedTypes.push(type);
+            }
+            
+            input.value = selectedTypes.join(',');
+            
+            // UI 업데이트
+            document.querySelectorAll('.type-btn').forEach(btn => {
+                if (selectedTypes.includes(btn.textContent)) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+        }
+
+        function formatAmountInput(input) {
+            let val = input.value.replace(/[^0-9]/g, '');
+            input.value = val ? parseInt(val).toLocaleString() : '';
+        }
+
+        function toggleCardNameInput(value) {
+            const amount = parseInt(value.replace(/,/g, '')) || 0;
+            const group = document.getElementById('receipt-card-name-group');
+            if (amount > 0) {
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+            }
+        }
+
+        async function saveReceipt() {
+            const id = document.getElementById('receipt-id').value;
+            const visitId = document.getElementById('receipt-visit-id').value;
+            const patientId = document.getElementById('receipt-patient-id').value;
+            const patientName = document.getElementById('receipt-display-name').textContent.split(' (')[0];
+            const chartNo = document.getElementById('receipt-chart-no').value;
+            const type = document.getElementById('receipt-type').value;
+            const cashAmount = parseInt(document.getElementById('receipt-cash').value.replace(/,/g, '')) || 0;
+            const cardAmount = parseInt(document.getElementById('receipt-card').value.replace(/,/g, '')) || 0;
+            const cardName = document.getElementById('receipt-card-name').value;
+            const procedureDetails = document.getElementById('receipt-details').value;
+            
+            // 오늘 날짜 (KST 기준)
+            const kstToday = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+
+            if (!type) {
+                alert('환자 구분을 선택해주세요.');
+                return;
+            }
+
+            if (cardAmount > 0 && !cardName) {
+                alert('카드사를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/receipt-book/receipts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: id || undefined,
+                        visitId,
+                        patientId,
+                        patientName,
+                        chartNo,
+                        type,
+                        cashAmount,
+                        cardAmount,
+                        cardName,
+                        procedureDetails,
+                        date: kstToday
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('✅ 수납 정보가 저장되었습니다.');
+                    closeReceiptModal();
+                } else {
+                    alert('저장 실패: ' + result.message);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('서버 오류 발생');
+            }
+        }
+
+
+        // 대시보드 통계 로드
+        async function loadDashboardStats() {
+            try {
+                const response = await fetch('/api/dashboard/summary');
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+
+                    const elBooking = document.getElementById('stat-booking');
+                    if (elBooking) elBooking.textContent = data.todayBookings + '건';
+
+                    const elPayment = document.getElementById('stat-payment');
+                    if (elPayment) elPayment.textContent = formatNumber(data.monthlyNonReimbursement) + '원';
+
+                    const elPrescription = document.getElementById('stat-prescription');
+
+
+                    const elMessage = document.getElementById('stat-message');
+                    if (elMessage) elMessage.textContent = data.monthlyMessages + '건';
+
+                    const msgDetail = document.getElementById('stat-message-detail');
+                    if (msgDetail) {
+                        // 예약 문자가 있으면 줄바꿈 처리하여 레이아웃 보호
+                        if (data.monthlyReservedCount) {
+                            msgDetail.innerHTML = `SMS ${data.monthlySmsCount || 0} / 알림톡 ${data.monthlyAlimtalkCount || 0}<br>예약 ${data.monthlyReservedCount}`;
+                        } else {
+                            msgDetail.textContent = `SMS ${data.monthlySmsCount || 0} / 알림톡 ${data.monthlyAlimtalkCount || 0}`;
+                        }
+                    }
+
+                    // 자보 환자: 오늘 내원 수 / 활성 환자 수
+                    const elJabo = document.getElementById('stat-jabo');
+                    if (elJabo) {
+                        const todayJabo = data.todayJaboVisits || 0;
+                        const activeJabo = data.activeJaboPatients || 0;
+                        elJabo.textContent = `${todayJabo}명/${activeJabo}명`;
+                    }
+
+                    // Review Count
+                    const elReview = document.getElementById('stat-review');
+                    if (elReview) {
+                        elReview.textContent = (data.reviewCount || 0) + '건';
+                    }
+                }
+            } catch (error) {
+                console.error('통계 로드 실패:', error);
+            }
+        }
+
+        // 오늘 예약 로드
+        async function loadTodayBookings() {
+            try {
+                // 한국 시간(KST) 기준으로 오늘 날짜 계산 (YYYY-MM-DD)
+                const today = new Intl.DateTimeFormat('sv-SE', {
+                    timeZone: 'Asia/Seoul',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).format(new Date());
+                const response = await fetch('/api/bookings');
+                const result = await response.json();
+
+                const container = document.getElementById('today-bookings');
+
+                if (result.success) {
+                    const todayBookings = result.data.filter(b => (b.date || '').slice(0, 10) === today && !['노쇼', '취소', '내원완료'].includes(b.status));
+
+                    if (todayBookings.length === 0) {
+                        container.innerHTML = '<p class="no-data">오늘 예약이 없습니다.</p>';
+                        return;
+                    }
+
+                    // 시간순 정렬
+                    todayBookings.sort((a, b) => a.time.localeCompare(b.time));
+
+                    // 상단 통계 카드 업데이트 (목록과 개수 일치 보장)
+                    const statBooking = document.getElementById('stat-booking');
+                    if (statBooking) {
+                        statBooking.textContent = todayBookings.length + '건';
+                    }
+
+                    container.innerHTML = todayBookings.map(b => {
+                        // 환자 매칭 로직 개선: patientId 우선 사용
+                        let patient = null;
+                        if (b.patientId) {
+                            patient = patients.find(p => p.id === b.patientId);
+                        }
+                        if (!patient) {
+                            const bName = (b.name || b.patientName || '').trim();
+                            const bPhone = b.phone ? b.phone.replace(/[^0-9]/g, '') : '';
+                            const bLast4 = bPhone.slice(-4);
+
+                            patient = patients.find(p => {
+                                const pPhone = p.phone ? p.phone.replace(/[^0-9]/g, '') : '';
+                                const pLast4 = pPhone.slice(-4);
+                                // 중요: 성함 AND 뒷번호 4자리가 일치하거나, 차트번호가 직접 일치해야 함
+                                return (p.name === bName && bLast4 !== '' && pLast4 === bLast4) ||
+                                    (b.chartNo && p.chartNo === b.chartNo);
+                            });
+                        }
+
+                        const patientId = patient?.id || 0;
+                        const birthDate = patient?.birthGender ? patient.birthGender.replace(/-/g, '').slice(0, 6) : '';
+                        const chartNo = b.chartNo || patient?.chartNo || '-';
+                        const displayName = b.name || b.patientName || patient?.name || '미입력';
+
+                        return `
+                        <div class="booking-item" id="booking-${b.id}">
+                            <div class="booking-time">${b.time}</div>
+                            <div class="booking-info" style="flex: 1; min-width: 0;">
+                                <div class="booking-name">
+                                    ${displayName} 
+                                    <span style="color: #667eea; font-weight: normal; font-size: 13px; margin-left: 2px;">
+                                        (${birthDate ? birthDate + ', ' : ''}${chartNo})
+                                    </span>
+                                </div>
+                                <div class="booking-purpose">${b.notes || b.purpose || ''}</div>
+                            </div>
+                            <div style="display: flex; gap: 3px;">
+                                <button onclick="checkInFromBooking(${patientId}, '${displayName.replace(/'/g, "\\'")}', '${chartNo}', ${b.id})" 
+                                    style="padding: 3px 6px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; white-space: nowrap;">
+                                    내원
+                                </button>
+                                <button onclick="updateBookingStatus(${b.id}, '노쇼')" 
+                                    style="padding: 3px 6px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap;">
+                                    노쇼
+                                </button>
+                                <button onclick="updateBookingStatus(${b.id}, '취소')" 
+                                    style="padding: 3px 6px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap;">
+                                    취소
+                                </button>
+                                <button onclick="editBooking(${b.id})" 
+                                    style="padding: 3px 6px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap;">
+                                    변경
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('예약 로드 실패:', error);
+                document.getElementById('today-bookings').innerHTML = '<p class="no-data">예약 정보를 불러올 수 없습니다.</p>';
+            }
+        }
+
+        // 오늘 내원 환자 로드
+        async function loadTodayVisits() {
+            try {
+                const response = await fetch('/api/today-visits');
+                const result = await response.json();
+                const container = document.getElementById('today-visits-list');
+
+                if (result.success && result.data.length > 0) {
+                    // 내원 시간 기준 내림차순 정렬
+                    result.data.sort((a, b) => new Date(b.visitedAt) - new Date(a.visitedAt));
+
+                    document.getElementById('visit-count').textContent = result.data.length + '명';
+
+                    // 각 환자의 추가 정보 조회
+                    const visitsHtml = await Promise.all(result.data.map(async v => {
+                        let info = { lastVisit: null, packageInfo: null, isJabo: false, lastTestDate: null, lastPrescDate: null };
+                        try {
+                            const infoRes = await fetch('/api/today-visits/patient-info/' + v.patientId);
+                            const infoData = await infoRes.json();
+                            if (infoData.success) info = infoData.data;
+                        } catch (e) { }
+
+                        // 자보 환자인 경우 텍스트는 이름 옆에만 표시 (하단 텍스트는 제거)
+                        const jaboText = '';
+                        const chunaText = info.chunaInfo ? `<span>추나: ${info.chunaInfo.count} (${info.chunaInfo.lastDate})</span>` : '';
+                        const visitedTime = v.visitedAt ? new Date(v.visitedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '';
+
+                        // 환자 전화번호 조회 (타입 불일치 고려)
+                        const patientData = patients.find(p => p.id == v.patientId);
+                        const patientPhone = patientData?.phone || patientData?.contact || '';
+
+                        return `
+                            <div class="booking-item" style="flex-direction: column; align-items: stretch; gap: 8px; padding: 15px 12px; height: auto; min-height: auto;" id="visit-${v.id}">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 12px; color: #6b7280;">${visitedTime}</span>
+                                        <strong>${v.patientName}${info.isJabo ? ' 🚗' : ''}</strong>
+                                        <span style="color: #667eea; font-size: 13px;">(${v.chartNo || '-'})</span>
+                                        <span style="font-size: 12px; color: #9ca3af;">${v.birthGender || ''}</span>
+                                    </div>
+                                    <div style="display: flex; gap: 5px;">
+                                        <button onclick="showQuickBooking(${v.patientId}, '${(v.patientName || '').replace(/'/g, "\\'")}', '${v.chartNo || ''}')" style="padding: 4px 8px; font-size: 11px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">📅</button>
+                                        <button onclick="selectPatient(${v.patientId})" style="padding: 4px 8px; font-size: 11px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">📋</button>
+                                        <button onclick="openReceiptModal(${v.id}, ${v.patientId}, '${(v.patientName || '').replace(/'/g, "\\'")}', '${v.chartNo || ''}')" style="padding: 4px 8px; font-size: 11px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;" title="수납 입력">💰</button>
+                                        <button onclick="sendTodaySMS(${v.id}, '${(v.patientName || '').replace(/'/g, "\\'")}', '${patientPhone.replace(/'/g, "\\'")}', '${v.chartNo || ''}')" style="padding: 4px 8px; font-size: 11px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;" title="수동 SMS 발송">📱</button>
+                                        ${(info.hasKakao === 1 || info.hasKakao === true || info.hasKakao === null) ?
+                                ((v.status || '').includes('_알림톡완료')
+                                    ? `<button disabled style="padding: 4px 8px; font-size: 11px; background: #e5e7eb; color: #9ca3af; border: none; border-radius: 4px; cursor: not-allowed;" title="이미 발송됨">✅ 완료</button>`
+                                    : `<button onclick="sendAlimtalkToPatient(${v.id}, '${(v.patientName || '').replace(/'/g, "\\'")}', '${v.chartNo || ''}', '${patientPhone.replace(/'/g, "\\'")}')" style="padding: 4px 8px; font-size: 11px; background: #fbbf24; color: #333; border: none; border-radius: 4px; cursor: pointer;" title="진료후 알림톡">💬</button>`
+                                ) : ''}
+                                        <button onclick="cancelVisit(${v.id})" style="padding: 4px 8px; font-size: 11px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">✕</button>
+                                    </div>
+                                </div>
+                                <div style="${chunaText ? 'display: flex;' : 'display: none;'} gap: 15px; font-size: 12px; color: #4b5563; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid #f3f4f6; line-height: 1.6;">
+                                    ${jaboText}
+                                    ${chunaText}
+                                </div>
+                            </div>
+                        `;
+                    }));
+
+                    container.innerHTML = visitsHtml.join('');
+                } else {
+                    document.getElementById('visit-count').textContent = '0명';
+                    container.innerHTML = '<p class="no-data">내원 환자가 없습니다.</p>';
+                }
+            } catch (error) {
+                console.error('내원 환자 로드 실패:', error);
+            }
+        }
+
+        // 예약에서 내원 등록
+        async function checkInFromBooking(patientId, patientName, chartNo, bookingId) {
+            const patient = patients.find(p => p.id === patientId);
+            const birthGender = patient?.birthGender || '';
+
+            try {
+                const response = await fetch('/api/today-visits', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        patientId,
+                        patientName,
+                        chartNo,
+                        birthGender,
+                        fromBooking: true,
+                        bookingId
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // 1. 먼저 예약 상태를 '내원완료'로 업데이트
+                    await fetch('/api/bookings/' + bookingId, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: '내원완료' })
+                    });
+
+                    // 2. 예약 목록 새로고침 (필터링으로 내원완료 제외됨)
+                    await loadTodayBookings();
+
+                    // 3. 내원 환자 목록 새로고침
+                    await loadTodayVisits();
+
+                } else {
+                    alert(result.message || '내원 등록 실패');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('내원 등록 중 오류 발생');
+            }
+        }
+
+        // 예약 상태 변경 (노쇼/취소)
+        async function updateBookingStatus(bookingId, status) {
+            if (!confirm(`예약을 '${status}' 처리하시겠습니까?`)) return;
+
+            try {
+                const response = await fetch('/api/bookings/' + bookingId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: status })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    await loadTodayBookings(); // 목록 새로고침
+                } else {
+                    alert('상태 변경 실패: ' + result.message);
+                }
+            } catch (error) {
+                console.error('상태 변경 오류:', error);
+                alert('오류가 발생했습니다.');
+            }
+        }
+
+        // 예약 수정 (변경)
+        async function editBooking(bookingId) {
+            try {
+                const bookingsRes = await fetch('/api/bookings');
+                const bookingsData = await bookingsRes.json();
+
+                if (bookingsData.success) {
+                    const booking = bookingsData.data.find(b => b.id === bookingId);
+                    if (booking) {
+                        const patient = patients.find(p => p.name === booking.name || p.chartNo === booking.chartNo);
+                        const patientId = patient ? patient.id : 0;
+
+                        showQuickBooking(patientId, booking.name, booking.chartNo);
+
+                        // 수정 모드 설정
+                        document.getElementById('qb-modal-title').innerText = '📅 예약 수정';
+                        document.getElementById('qb-booking-id').value = booking.id;
+                        document.getElementById('qb-date').value = (booking.date || '').slice(0, 10);
+                        const qbMemo = document.getElementById('qb-memo');
+                        qbMemo.value = booking.notes || booking.purpose || '';
+                        autoResizeTextarea(qbMemo);
+                        document.getElementById('qb-time').value = booking.time; // 시간 설정 (select option 매칭)
+                    }
+                }
+            } catch (error) {
+                console.error('예약 정보 조회 실패:', error);
+                alert('예약 정보를 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 내원 취소
+        async function cancelVisit(visitId) {
+            if (!confirm('내원을 취소하시겠습니까?')) return;
+
+            try {
+                // 수납 내역도 함께 삭제 연동
+                await fetch('/api/receipt-book/receipts/visit/' + visitId, { method: 'DELETE' });
+
+                await fetch('/api/today-visits/' + visitId, { method: 'DELETE' });
+                await loadTodayBookings();
+                await loadTodayVisits();
+            } catch (error) {
+                console.error('내원 취소 실패:', error);
+            }
+        }
+
+
+        // 진료후 알림톡 발송 (Treatpost03 or booking01)
+        async function sendAlimtalkToPatient(visitId, name, chartNo, phone) {
+            if (!phone || phone === '-' || phone.length < 10) {
+                alert('전화번호가 없습니다.');
+                return;
+            }
+
+            if (!confirm(`${name}님께 진료후 알림톡을 발송하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                // Post-Treatment Agent 호출
+                const response = await fetch('/api/agent/alimtalk/dispatch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ visitId, patientName: name, chartNo, phone })
+                });
+
+                const result = await response.json();
+                console.log('사후관리 알림톡 발송 결과:', result);
+
+                if (result.success) {
+                    alert(`${name}님께 알림톡이 성공적으로 발송되었습니다.`);
+                    // 버튼의 색상 변경 또는 체크표시를 위한 UI 갱신 로직 (선택적)
+                    // (await loadTodayVisits()를 호출해 목록을 다시 불러오거나, 요소 스타일 업데이트)
+                    await loadTodayVisits();
+                } else {
+                    alert('발송 실패: ' + (result.message || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('알림톡 발송 오류:', error);
+                alert('알림톡 발송 중 네트워크 또는 시스템 오류가 발생했습니다.');
+            }
+        }
+
+        // 당일 SMS 수동 발송
+        async function sendTodaySMS(visitId, name, phone, chartNo) {
+            if (!phone || phone === '-' || phone.length < 10) {
+                alert('전화번호가 없습니다.');
+                return;
+            }
+
+            const message = prompt(`${name}님에게 보낼 SMS 문구를 작성해주세요:`, `[신방한의원] ${name}님,`);
+            if (!message) return;
+
+            try {
+                const response = await fetch('/api/send-sms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ patients: [{ name: name, phone: phone, chartNo: chartNo }], content: message })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('SMS 발송이 성공했습니다.');
+                } else {
+                    alert('SMS 발송 실패: ' + (result.message || '오류 발생'));
+                }
+            } catch (error) {
+                console.error('SMS 발송 오류:', error);
+                alert('SMS 발송 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 빠른 예약 모달 표시
+        function showQuickBooking(patientId, patientName, chartNo) {
+            // 초기화
+            document.getElementById('qb-modal-title').innerText = '📅 빠른 예약';
+            document.getElementById('qb-booking-id').value = '';
+
+            document.getElementById('qb-patient-id').value = patientId;
+            document.getElementById('qb-patient-name').value = patientName;
+            document.getElementById('qb-chart-no').value = chartNo;
+            document.getElementById('qb-display-name').textContent = patientName + ' (' + chartNo + ')';
+
+            // 기본값: 오늘 날짜 한국 시간(KST) 기준
+            const today = new Intl.DateTimeFormat('sv-SE', {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).format(new Date());
+
+            document.getElementById('qb-date').value = today;
+            document.getElementById('qb-time').value = '';
+            const qbMemo = document.getElementById('qb-memo');
+            qbMemo.value = '';
+            qbMemo.style.height = 'auto'; // 높이 초기화
+
+            document.getElementById('quick-booking-modal').style.display = 'flex';
+        }
+
+        // 빠른 예약 모달 숨기기
+        function hideQuickBooking() {
+            document.getElementById('quick-booking-modal').style.display = 'none';
+        }
+
+        // 빠른 예약/수정 등록
+        async function submitQuickBooking() {
+            const bookingId = document.getElementById('qb-booking-id').value;
+            const patientId = document.getElementById('qb-patient-id').value;
+            const patientName = document.getElementById('qb-patient-name').value;
+            const chartNo = document.getElementById('qb-chart-no').value;
+            const date = document.getElementById('qb-date').value;
+            const time = document.getElementById('qb-time').value;
+            const memo = document.getElementById('qb-memo').value;
+
+            if (!date || !time) {
+                alert('예약일과 예약시간을 입력해주세요.');
+                return;
+            }
+
+            try {
+                // 환자 전화번호 조회
+                const patient = patients.find(p => p.id === parseInt(patientId));
+                const phone = patient?.phone || patient?.contact || '-';
+
+                let response;
+                const payload = {
+                    patientId: parseInt(patientId),
+                    patientName: patientName,
+                    name: patientName,
+                    phone: phone,
+                    chartNo: chartNo,
+                    date: date,
+                    time: time,
+                    notes: memo,
+                    purpose: memo
+                };
+
+                if (bookingId) {
+                    // 수정 (PUT)
+                    response = await fetch('/api/bookings/' + bookingId, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    // 신규 (POST)
+                    response = await fetch('/api/bookings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(bookingId ? '예약이 수정되었습니다.' : '예약이 등록되었습니다.');
+                    hideQuickBooking();
+                    await loadTodayBookings();
+                } else {
+                    alert(result.message || '처리 실패');
+                }
+            } catch (error) {
+                alert('오류 발생');
+                console.error(error);
+            }
+        }
+
+
+
+        // 환자 상세에서 내원 등록
+        async function checkInPatient() {
+            if (!selectedPatient) {
+                alert('환자가 선택되지 않았습니다.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/today-visits', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        patientId: selectedPatient.id,
+                        patientName: selectedPatient.name,
+                        chartNo: selectedPatient.chartNo || '',
+                        birthGender: selectedPatient.birthGender || '',
+                        fromBooking: false
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('내원 등록되었습니다.');
+                    showOverview();
+                    await loadTodayVisits();
+                } else {
+                    alert(result.message || '내원 등록 실패');
+                }
+            } catch (error) {
+                alert('내원 등록 중 오류 발생');
+            }
+        }
+
+        // 환자 검색
+        let searchResults = [];
+        let searchSelectedIndex = -1;
+
+        document.getElementById('patient-search').addEventListener('input', (e) => {
+            const query = e.target.value.trim().toLowerCase();
+            const dropdown = document.getElementById('search-dropdown');
+
+            if (query.length < 1) {
+                dropdown.classList.remove('show');
+                searchResults = [];
+                searchSelectedIndex = -1;
+                return;
+            }
+
+            fetch(`/api/patients/search?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(result => {
+                    if (result.success && result.data.length > 0) {
+                        searchResults = result.data.slice(0, 10);
+                        searchSelectedIndex = 0; // 첫 번째 항목 자동 선택
+                        renderSearchDropdown();
+                    } else {
+                        searchResults = [];
+                        searchSelectedIndex = -1;
+                        dropdown.innerHTML = '<div class="search-item" style="color: #9ca3af;">검색 결과 없음</div>';
+                    }
+                    dropdown.classList.add('show');
+                })
+                .catch(err => {
+                    console.error('검색 실패:', err);
+                });
+        });
+
+        function renderSearchDropdown() {
+            const dropdown = document.getElementById('search-dropdown');
+            dropdown.innerHTML = searchResults.map((p, idx) => `
+                <div class="search-item ${idx === searchSelectedIndex ? 'active' : ''}" onclick="selectPatient(${p.id})">
+                    <div>
+                        <span class="name">${p.name}</span>
+                        <span class="info" style="margin-left: 10px;">${p.chartNo || ''}</span>
+                        <span class="info" style="margin-left: 8px; color: #9ca3af;">${p.birthGender || ''}</span>
+                    </div>
+                    <span class="info">${formatPhone(p.phone)}</span>
+                </div>
+            `).join('');
+
+            // 활성 아이템이 보이도록 스크롤 조절
+            const activeItem = dropdown.querySelector('.search-item.active');
+            if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
+        }
+
+        // 키보드 제어 추가
+        document.getElementById('patient-search').addEventListener('keydown', (e) => {
+            if (!searchResults.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                searchSelectedIndex = (searchSelectedIndex + 1) % searchResults.length;
+                renderSearchDropdown();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                searchSelectedIndex = (searchSelectedIndex - 1 + searchResults.length) % searchResults.length;
+                renderSearchDropdown();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (searchSelectedIndex >= 0) {
+                    selectPatient(searchResults[searchSelectedIndex].id);
+                }
+            }
+        });
+
+        // 외부 클릭시 드롭다운 닫기
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                document.getElementById('search-dropdown').classList.remove('show');
+            }
+        });
+
+        // 환자 선택
+        async function selectPatient(id) {
+            // 먼저 로컬에서 찾아보고 없으면 API에서 가져옴
+            selectedPatient = patients.find(p => p.id == id);
+
+            if (!selectedPatient) {
+                try {
+                    const response = await fetch('/api/patients');
+                    const result = await response.json();
+                    if (result.success) {
+                        patients = result.data; // 로컬 캐시 갱신
+                        selectedPatient = patients.find(p => p.id == id);
+                    }
+                } catch (e) {
+                    console.error('환자 정보 동기화 실패:', e);
+                }
+            }
+
+            if (!selectedPatient) {
+                alert('환자 정보를 찾을 수 없습니다.');
+                return;
+            }
+
+            document.getElementById('search-dropdown').classList.remove('show');
+            document.getElementById('patient-search').value = '';
+
+            // 화면 전환
+            document.getElementById('overview-section').style.display = 'none';
+            document.getElementById('patient-detail').classList.add('show');
+
+            // 환자 기본 정보 표시
+            document.getElementById('patient-name').textContent = selectedPatient.name;
+            document.getElementById('patient-chart').textContent = `차트번호: ${selectedPatient.chartNo || '-'}`;
+            document.getElementById('patient-phone').textContent = `연락처: ${formatPhone(selectedPatient.phone)}`;
+            document.getElementById('patient-birth').textContent = `생년월일: ${selectedPatient.birthGender || '-'}`;
+
+            // 메모 입력창 초기화
+            document.getElementById('memo-input').value = '';
+
+            // 메모 로드
+            await loadPatientMemos();
+
+            // 상세 정보 로드
+            const detailData = await loadPatientDetails(selectedPatient.chartNo || selectedPatient.name);
+
+            // 수신 거부 설정 반영 (강화된 로직)
+            const kakaoToggle = document.getElementById('patient-kakao-toggle');
+            const smsRejectToggle = document.getElementById('patient-sms-reject-toggle');
+
+            // API 결과(detailData) 또는 로컬 캐시(selectedPatient) 중 최신 값을 참조
+            const p = (detailData && detailData.patient) ? detailData.patient : selectedPatient;
+
+            if (p && (kakaoToggle || smsRejectToggle)) {
+                // 숫값, 문자열값, 불리언값을 모두 고려하여 엄격하게 체크
+                const isKakaoOptOut = (p.hasKakao == 0 || p.hasKakao === false || p.hasKakao === '0');
+                const isSmsRejected = (p.rejectSms == 1 || p.rejectSms === true || p.rejectSms === '1');
+
+                if (kakaoToggle) kakaoToggle.checked = isKakaoOptOut;
+                if (smsRejectToggle) smsRejectToggle.checked = isSmsRejected;
+
+                console.log(`[UI Update] ${p.name} - 카톡거부:${isKakaoOptOut}, 문자거부:${isSmsRejected}`);
+            }
+        }
+
+        // 카카오톡 설정 업데이트
+        async function updateKakaoStatus(isOptOut) {
+            if (!selectedPatient) return;
+            const hasKakao = !isOptOut;
+            try {
+                const response = await fetch(`/api/patients/${selectedPatient.id}/kakao-status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ hasKakao })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    selectedPatient.hasKakao = hasKakao ? 1 : 0;
+                    await loadTodayVisits();
+                } else {
+                    alert('설정 변경 실패: ' + result.message);
+                }
+            } catch (error) {
+                console.error('설정 변경 오류:', error);
+                alert('오류가 발생했습니다.');
+            }
+        }
+
+        // 문자 수신 거부 설정 업데이트
+        async function updateSmsRejectStatus(isRejected) {
+            if (!selectedPatient) return;
+            try {
+                const response = await fetch(`/api/patients/${selectedPatient.id}/sms-reject`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rejectSms: isRejected })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    selectedPatient.rejectSms = isRejected ? 1 : 0;
+                    await loadTodayVisits();
+                } else {
+                    alert('설정 변경 실패: ' + result.message);
+                }
+            } catch (error) {
+                console.error('설정 변경 오류:', error);
+                alert('오류가 발생했습니다.');
+            }
+        }
+
+        // 환자 상세 정보 로드
+        async function loadPatientDetails(chartNo) {
+            try {
+                const response = await fetch(`/api/dashboard/patient/${encodeURIComponent(chartNo)}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+
+                    // 예약 이력
+                    const bookingsDiv = document.getElementById('patient-bookings');
+                    if (data.bookings && data.bookings.length > 0) {
+                        bookingsDiv.innerHTML = data.bookings.slice(0, 10).map(b => {
+                            let statusText = `(${b.status})`;
+                            if (b.platform === 'naver' || b.naverStatus) {
+                                statusText = `(${b.status} <span style="font-weight:900; color:#03C75A;">N</span>)`; // UI 개선: N 로고
+                            }
+
+                            let statusHtml = `<span>${statusText}</span>`; // Default initialization
+
+                            if (b.status === '노쇼') statusHtml = `<span style="color: #ef4444; font-weight: bold;">${statusText}</span>`;
+                            else if (b.status === '취소') statusHtml = `<span style="color: #f59e0b; font-weight: bold;">${statusText}</span>`;
+                            else if (b.status === '내원완료') statusHtml = `<span style="color: #10b981; font-weight: bold;">(완료)</span>`;
+                            else if (b.platform === 'naver' || b.naverStatus) statusHtml = `<span>${statusText}</span>`;
+
+                            return `
+                            <div class="detail-item">
+                                <span class="date">${(b.date || '').slice(0, 10)} ${b.time} ${statusHtml}</span>
+                                <div class="content">${b.purpose || '예약'}</div>
+                            </div>
+                        `}).join('');
+                    } else {
+                        bookingsDiv.innerHTML = '<p class="no-data">예약 내역이 없습니다.</p>';
+                    }
+
+                    // 추가 정보 로드 (별도 API 호출)
+                    await loadAdditionalPatientData();
+
+                    return data; // 데이터 반환 추가 (토글 설정용)
+                }
+                return null;
+            } catch (error) {
+                console.error('환자 상세 정보 로드 실패:', error);
+            }
+        }
+
+        // 추가 환자 정보 로드 (메시지, 이미지)
+        async function loadAdditionalPatientData() {
+            if (!selectedPatient) return;
+
+            // 문자/알림톡
+            try {
+                const msgRes = await fetch(`/api/message-history/${selectedPatient.chartNo}`);
+                const msgData = await msgRes.json();
+                const msgDiv = document.getElementById('patient-messages');
+
+                if (msgData.success && msgData.data.length > 0) {
+                    const messages = msgData.data.sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+                    msgDiv.innerHTML = messages.slice(0, 10).map(m => `
+                        <div class="detail-item">
+                            <span class="date">${m.sentAt?.slice(0, 10) || '-'}</span>
+                            <div class="content">${m.type || '알림톡'} - ${m.status === 'success' ? '✅전송' : '❌실패'}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    msgDiv.innerHTML = '<p class="no-data">발송 내역이 없습니다.</p>';
+                }
+            } catch (e) {
+                document.getElementById('patient-messages').innerHTML = '<p class="no-data">발송 내역이 없습니다.</p>';
+            }
+        }
+
+        // 대시보드로 돌아가기
+        function showOverview() {
+            document.getElementById('overview-section').style.display = 'block';
+            document.getElementById('patient-detail').classList.remove('show');
+            selectedPatient = null;
+        }
+
+        // 숫자 포맷
+        function formatNumber(num) {
+            if (!num) return '0';
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
+        // 전화번호 포맷 (010-1234-5678 형식으로 통일)
+        function formatPhone(phone) {
+            if (!phone || phone === '-') return '-';
+            // 숫자만 추출
+            const digits = phone.replace(/\D/g, '');
+            // 11자리 (010xxxxxxxx)
+            if (digits.length === 11) {
+                return digits.slice(0, 3) + '-' + digits.slice(3, 7) + '-' + digits.slice(7);
+            }
+            // 10자리 (02xxxxxxxx 또는 지역번호)
+            if (digits.length === 10) {
+                if (digits.startsWith('02')) {
+                    return digits.slice(0, 2) + '-' + digits.slice(2, 6) + '-' + digits.slice(6);
+                }
+                return digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6);
+            }
+            // 그 외는 원본 반환
+            return phone;
+        }
+
+        // 환자 메모 로드
+        async function loadPatientMemos() {
+            const container = document.getElementById('memo-list');
+            if (!selectedPatient) {
+                container.innerHTML = '<p class="no-data">메모가 없습니다.</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/patient-memos/${selectedPatient.id}`);
+                const result = await response.json();
+
+                if (result.success && result.data.length > 0) {
+                    container.innerHTML = result.data.map(memo => `
+                        <div class="detail-item" id="memo-${memo.id}" style="margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div style="flex: 1;">
+                                    <span class="date">${formatMemoDate(memo.createdAt)}</span>
+                                    ${memo.updatedAt ? '<span style="font-size: 11px; color: #9ca3af; margin-left: 8px;">(수정됨)</span>' : ''}
+                                    <div class="content" style="margin-top: 8px;">${memo.content}</div>
+                                </div>
+                                <div style="display: flex; gap: 5px; margin-left: 10px;">
+                                    <button onclick="editMemo(${memo.id}, \`${memo.content.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)" 
+                                        style="padding: 4px 8px; font-size: 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">✏️</button>
+                                    <button onclick="deleteMemo(${memo.id})" 
+                                        style="padding: 4px 8px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p class="no-data">메모가 없습니다.</p>';
+                }
+            } catch (error) {
+                console.error('메모 로드 실패:', error);
+                container.innerHTML = '<p class="no-data">메모를 불러올 수 없습니다.</p>';
+            }
+        }
+
+        // 메모 저장
+        async function saveMemo() {
+            const content = document.getElementById('memo-input').value.trim();
+            if (!content) {
+                alert('메모 내용을 입력해주세요.');
+                return;
+            }
+
+            if (!selectedPatient) {
+                alert('환자가 선택되지 않았습니다.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/patient-memos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        patientId: selectedPatient.id,
+                        patientName: selectedPatient.name,
+                        content
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    const input = document.getElementById('memo-input');
+                    input.value = '';
+                    input.style.height = 'auto'; // 높이 초기화
+                    await loadPatientMemos();
+                } else {
+                    alert('메모 저장 실패: ' + result.message);
+                }
+            } catch (error) {
+                alert('메모 저장 중 오류 발생');
+            }
+        }
+
+        // 메모 수정 모드
+        let editingMemoId = null;
+
+        function editMemo(id, content) {
+            editingMemoId = id;
+            const memoDiv = document.getElementById(`memo-${id}`);
+            memoDiv.innerHTML = `
+                <div style="display: flex; gap: 10px; align-items: flex-start;">
+                    <textarea id="edit-memo-input" style="flex: 1; padding: 10px; border: 2px solid #667eea; border-radius: 8px; font-size: 14px; resize: vertical; min-height: 60px;">${content}</textarea>
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        <button onclick="updateMemo(${id})" 
+                            style="padding: 6px 12px; font-size: 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">저장</button>
+                        <button onclick="cancelEditMemo()" 
+                            style="padding: 6px 12px; font-size: 12px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer;">취소</button>
+                    </div>
+                </div>
+            `;
+            
+            // 수정 모드 진입 시 즉시 높이 조절
+            setTimeout(() => {
+                const input = document.getElementById('edit-memo-input');
+                if (input) autoResizeTextarea(input);
+            }, 0);
+        }
+
+        // 메모 업데이트
+        async function updateMemo(id) {
+            const content = document.getElementById('edit-memo-input').value.trim();
+            if (!content) {
+                alert('메모 내용을 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/patient-memos/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    editingMemoId = null;
+                    await loadPatientMemos();
+                } else {
+                    alert('메모 수정 실패: ' + result.message);
+                }
+            } catch (error) {
+                alert('메모 수정 중 오류 발생');
+            }
+        }
+
+        // 메모 수정 취소
+        function cancelEditMemo() {
+            editingMemoId = null;
+            loadPatientMemos();
+        }
+
+        // 메모 삭제
+        async function deleteMemo(id) {
+            if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+
+            try {
+                const response = await fetch(`/api/patient-memos/${id}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (result.success) {
+                    await loadPatientMemos();
+                } else {
+                    alert('메모 삭제 실패: ' + result.message);
+                }
+            } catch (error) {
+                alert('메모 삭제 중 오류 발생');
+            }
+        }
+
+        // 메모 날짜 포맷 (yyyy-mm-dd hh:mm)
+        function formatMemoDate(isoString) {
+            const date = new Date(isoString);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hours}:${minutes}`;
+        }
+
+        // Textarea 자동 높이 조절
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+
+        // 초기화 시 이벤트 리스너 등록
+        document.addEventListener('input', (e) => {
+            if (e.target.id === 'memo-input' || e.target.id === 'edit-memo-input' || e.target.id === 'qb-memo') {
+                autoResizeTextarea(e.target);
+            }
+        });
+
+
+
+
+
+        // 초기화 실행
+        init();
+
+        // 단축키 릴레이 (Alt + Q, Escape)
+        window.addEventListener('keydown', (e) => {
+            if ((e.altKey && (e.key === 'q' || e.key === 'Q' || e.key === 'ㅂ')) || e.key === 'Escape') {
+                e.preventDefault();
+                window.parent.postMessage({
+                    type: e.key === 'Escape' ? 'closeTalkPanel' : 'toggleTalkPanel'
+                }, '*');
+            }
+        });
+        // 수신거부 모달 관련
+        async function openRejectListModal() {
+            document.getElementById('reject-list-modal').style.display = 'flex';
+            await loadRejectList();
+        }
+
+        function closeRejectListModal() {
+            document.getElementById('reject-list-modal').style.display = 'none';
+        }
+
+        async function loadRejectList() {
+            const container = document.getElementById('reject-list-container');
+            try {
+                const res = await fetch('/api/patients/reject-list');
+                const result = await res.json();
+
+                if (result.success && result.data.length > 0) {
+                    container.innerHTML = `
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <thead>
+                                <tr style="background: #f8fafc; text-align: left;">
+                                    <th style="padding: 12px; border-bottom: 2px solid #e2e8f0;">환자명(차트)</th>
+                                    <th style="padding: 12px; border-bottom: 2px solid #e2e8f0; text-align: center;">카톡 사용안함</th>
+                                    <th style="padding: 12px; border-bottom: 2px solid #e2e8f0; text-align: center;">문자 거부</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${result.data.map(p => `
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 12px;">
+                                            <div style="font-weight: 600;">${p.name}</div>
+                                            <div style="font-size: 11px; color: #94a3b8;">${p.chartNo || '-'}</div>
+                                        </td>
+                                        <td style="padding: 12px; text-align: center;">
+                                            <input type="checkbox" style="width: 18px; height: 18px;" ${p.hasKakao === 0 ? 'checked' : ''} 
+                                                onchange="toggleRejectStatusInModal(${p.id}, 'kakao', this.checked)">
+                                        </td>
+                                        <td style="padding: 12px; text-align: center;">
+                                            <input type="checkbox" style="width: 18px; height: 18px;" ${p.rejectSms === 1 ? 'checked' : ''} 
+                                                onchange="toggleRejectStatusInModal(${p.id}, 'sms', this.checked)">
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    container.innerHTML = '<p class="no-data" style="padding: 20px; text-align: center; color: #94a3b8;">수신 거부 설정된 환자가 없습니다.</p>';
+                }
+            } catch (error) {
+                container.innerHTML = '<p class="no-data" style="padding: 20px; text-align: center; color: #ef4444;">데이터 로드 실패</p>';
+            }
+        }
+
+        async function toggleRejectStatusInModal(id, type, value) {
+            try {
+                const endpoint = type === 'kakao' ? `/api/patients/${id}/kakao-status` : `/api/patients/${id}/sms-reject`;
+                const body = type === 'kakao' ? { hasKakao: !value } : { rejectSms: value };
+
+                const res = await fetch(endpoint, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const result = await res.json();
+                if (!result.success) {
+                    alert('변경 실패: ' + result.message);
+                }
+                // 실시간 동기화는 소켓이 처리하지만, 목록 즉시 갱신
+                await loadRejectList();
+            } catch (error) {
+                alert('오류 발생');
+                console.error(error);
+            }
+        }
+
+        // ==========================================
+        // 네이버 예약 동기화 로직
+        // ==========================================
+        async function triggerNaverSync() {
+            const btn = document.getElementById('naver-sync-btn');
+            const originalText = btn.innerText;
+
+            btn.disabled = true;
+            btn.innerText = '...';
+            btn.style.opacity = '0.6';
+
+            try {
+                const response = await fetch('/api/naver-sync/trigger', { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    // 비동기 시작 알림
+                    console.log('네이버 동기화 요청 성공:', result.message);
+                    // 토스트 등이 있으면 좋지만, 여기서는 일단 로그로 처리하거나 짧은 안내만 표시
+                } else {
+                    alert('❌ 동기화 요청 실패: ' + result.message);
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    btn.style.opacity = '1';
+                }
+            } catch (error) {
+                console.error('동기화 오류:', error);
+                if (document.visibilityState === 'visible') {
+                    alert('동기화 중 오류가 발생했습니다. (네트워크 상태를 확인하세요)');
+                }
+                btn.disabled = false;
+                btn.innerText = originalText;
+                btn.style.opacity = '1';
+            } finally {
+                // 백그라운드 작업이므로 버튼은 일정 시간 후 복구
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    btn.style.opacity = '1';
+                }, 3000);
+            }
+        }
+
+        async function naverLogin() {
+            try {
+                alert('네이버 로그인 창이 서버 컴퓨터에서 실행됩니다.\n로그인 완료 후 창을 닫지 말고 대기해주세요.');
+                const response = await fetch('/api/naver-sync/login');
+                const result = await response.json();
+
+                if (result.success) {
+                    if (result.status === 'waiting_for_login') {
+                        alert('ℹ️ ' + result.message);
+                    } else {
+                        alert('✅ 네이버 로그인 성공! 이제 동기화가 가능합니다.');
+                    }
+                } else {
+                    alert('❌ 로그인 실패: ' + result.message);
+                }
+            } catch (error) {
+                alert('로그인 요청 중 오류 발생');
+            }
+        }
+
+        function updateLastSyncTime(customTime) {
+            let timeStr = '';
+            if (customTime) {
+                timeStr = customTime;
+            } else {
+                const now = new Date();
+                const hours = now.getHours();
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const ampm = hours >= 12 ? '오후' : '오전';
+                const displayHours = hours % 12 || 12;
+                timeStr = `${ampm} ${String(displayHours).padStart(2, '0')}:${minutes}`;
+            }
+
+            const display = document.getElementById('sync-time-display');
+            if (display) {
+                display.textContent = `최근: ${timeStr}`;
+                localStorage.setItem('lastNaverSync', timeStr);
+            }
+        }
+    </script>
+</body>
+
+</html>

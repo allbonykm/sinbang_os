@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자동차보험 환자 관리 - 신방한의원 OS</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .back-btn {
+            padding: 10px 18px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-decoration: none;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .back-btn:hover {
+            background: #f1f5f9;
+            transform: translateX(-3px);
+        }
+
+        /* 등록 섹션 */
+        .register-section {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            margin-bottom: 30px;
+            border: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-group {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        .search-group input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .search-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            margin-top: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .search-dropdown.show {
+            display: block;
+        }
+
+        .search-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .search-item:hover {
+            background: #f8fafc;
+        }
+
+        .search-item .name {
+            font-weight: 700;
+        }
+
+        .search-item .info {
+            font-size: 13px;
+            color: var(--text-light);
+        }
+
+        /* 입력 폼 */
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .selected-patient {
+            padding: 12px 15px;
+            background: #eff6ff;
+            border-radius: 10px;
+            border: 1px solid #bfdbfe;
+            font-weight: 600;
+            color: var(--primary-dark);
+            font-size: 14px;
+        }
+
+        .input-item label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-light);
+            margin-bottom: 8px;
+        }
+
+        .input-item input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .submit-btn {
+            padding: 12px 25px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .submit-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        /* 리스트 섹션 */
+        .list-section {
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f8fafc;
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-light);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .patient-info {
+            text-align: left;
+            padding-left: 10px;
+        }
+
+        .patient-info .name {
+            font-weight: 700;
+        }
+
+        .patient-info .chart {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-left: 8px;
+        }
+
+        .date-text {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .btn-small {
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: white;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-edit:hover {
+            background: #eff6ff;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-print:hover {
+            background: #f0fdf4;
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .btn-settle:hover {
+            background: #fef2f2;
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .empty-state {
+            padding: 60px;
+            text-align: center;
+            color: var(--text-light);
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 400px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 20px;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .modal-btns button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-cancel {
+            background: #f1f5f9;
+            color: var(--text-light);
+        }
+
+        .btn-confirm {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* 알림 토스트 */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            display: none;
+            z-index: 2000;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🚗 자동차보험 환자 관리</h1>
+            <a href="/dashboard.html" class="back-btn">← 대시보드로 돌아가기</a>
+        </header>
+
+        <!-- 등록 섹션 -->
+        <div class="register-section">
+            <div class="section-title">👤 자동차보험 환자 등록</div>
+            <div class="search-group">
+                <input type="text" id="patient-search" placeholder="환자 이름, 차트번호, 연락처로 검색..." autocomplete="off">
+                <div class="search-dropdown" id="search-dropdown"></div>
+            </div>
+
+            <div class="input-row" id="register-form" style="display: none;">
+                <div class="input-item">
+                    <label>선택된 환자</label>
+                    <div id="selected-patient-display" class="selected-patient">이름 (차트번호)</div>
+                    <input type="hidden" id="selected-patient-id">
+                    <input type="hidden" id="selected-patient-name">
+                    <input type="hidden" id="selected-patient-chart">
+                </div>
+                <div class="input-item">
+                    <label>사고일자</label>
+                    <input type="date" id="accident-date">
+                </div>
+                <div class="input-item">
+                    <label>초진일자</label>
+                    <input type="date" id="initial-visit-date">
+                </div>
+                <button class="submit-btn" onclick="registerJaboPatient()">등록하기</button>
+            </div>
+        </div>
+
+        <!-- 리스트 섹션 -->
+        <div class="list-section">
+            <div style="padding: 20px; border-bottom: 1px solid var(--border); background: #fafafa;">
+                <div class="section-title" style="margin:0">📋 현재 관리 중인 자동차보험 환자</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>환자 정보</th>
+                        <th>사고일</th>
+                        <th>초진일</th>
+                        <th>등록일</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="jabo-list">
+                    <!-- 데이터가 로드됩니다 -->
+                </tbody>
+            </table>
+            <div id="empty-state" class="empty-state" style="display: none;">
+                등록된 환자가 없습니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- 수정 모달 -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">✏️ 정보 수정</div>
+            <input type="hidden" id="edit-id">
+            <div class="input-item" style="margin-bottom: 15px;">
+                <label>환자명</label>
+                <div id="edit-patient-name"
+                    style="font-weight: 700; padding: 10px; background: #f8fafc; border-radius: 8px;"></div>
+            </div>
+            <div class="input-item" style="margin-bottom: 15px;">
+                <label>사고일자</label>
+                <input type="date" id="edit-accident-date"
+                    style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px;">
+            </div>
+            <div class="input-item">
+                <label>초진일자</label>
+                <input type="date" id="edit-initial-visit-date"
+                    style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px;">
+            </div>
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="closeModal('edit-modal')">취소</button>
+                <button class="btn-confirm" onclick="updateJaboInfo()">저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let searchTimeout;
+        const searchInput = document.getElementById('patient-search');
+        const dropdown = document.getElementById('search-dropdown');
+
+        // 환자 검색 로직
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(searchTimeout);
+            if (!query) {
+                dropdown.classList.remove('show');
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/patients/search?q=${encodeURIComponent(query)}`);
+                    const result = await response.json();
+                    if (result.success) {
+                        displaySearchResults(result.data);
+                    }
+                } catch (error) {
+                    console.error('Search error:', error);
+                }
+            }, 300);
+        });
+
+        function displaySearchResults(patients) {
+            dropdown.innerHTML = '';
+            if (patients.length === 0) {
+                dropdown.classList.remove('show');
+                return;
+            }
+
+            patients.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'search-item';
+                item.innerHTML = `
+                    <span class="name">${p.name}</span>
+                    <span class="info">#${p.chartNo} | ${p.phone || '-'}</span>
+                `;
+                item.onclick = () => selectPatient(p);
+                dropdown.appendChild(item);
+            });
+            dropdown.classList.add('show');
+        }
+
+        function selectPatient(p) {
+            document.getElementById('selected-patient-id').value = p.id;
+            document.getElementById('selected-patient-name').value = p.name;
+            document.getElementById('selected-patient-chart').value = p.chartNo;
+            document.getElementById('selected-patient-display').textContent = `${p.name} (${p.chartNo})`;
+
+            document.getElementById('register-form').style.display = 'grid';
+            dropdown.classList.remove('show');
+            searchInput.value = '';
+
+            // 오늘 날짜로 기본 설정
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('accident-date').value = today;
+            document.getElementById('initial-visit-date').value = today;
+        }
+
+        // 목록 로드
+        async function loadJaboPatients() {
+            try {
+                const response = await fetch('/api/jabo-patients');
+                const result = await response.json();
+                if (result.success) {
+                    renderList(result.data);
+                }
+            } catch (error) {
+                console.error('Load error:', error);
+            }
+        }
+
+        function renderList(data) {
+            const tbody = document.getElementById('jabo-list');
+            const empty = document.getElementById('empty-state');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <div class="patient-info">
+                            <span class="name">${item.patientName}</span>
+                            <span class="chart">#${item.chartNo}</span>
+                        </div>
+                    </td>
+                    <td><span class="date-text">${item.accidentDate}</span></td>
+                    <td><span class="date-text">${item.initialVisitDate}</span></td>
+                    <td style="font-size: 13px; color: var(--text-light)">${item.createdAt.split(' ')[0]}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="btn-small btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>수정</button>
+                            <button class="btn-small btn-print" onclick="openPrintSelect(${item.id})">출력</button>
+                            <button class="btn-small btn-settle" onclick="settlePatient(${item.id})">합의</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 등록
+        async function registerJaboPatient() {
+            const patientId = document.getElementById('selected-patient-id').value;
+            const patientName = document.getElementById('selected-patient-name').value;
+            const chartNo = document.getElementById('selected-patient-chart').value;
+            const accidentDate = document.getElementById('accident-date').value;
+            const initialVisitDate = document.getElementById('initial-visit-date').value;
+
+            if (!accidentDate || !initialVisitDate) {
+                showToast('날짜를 입력해 주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/jabo-patients', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ patientId, chartNo, patientName, accidentDate, initialVisitDate })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast('성공적으로 등록되었습니다.');
+                    document.getElementById('register-form').style.display = 'none';
+                    loadJaboPatients();
+                } else {
+                    showToast(result.message);
+                }
+            } catch (error) {
+                showToast('등록 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 수정 모달
+        function openEditModal(item) {
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('edit-patient-name').textContent = item.patientName;
+            document.getElementById('edit-accident-date').value = item.accidentDate;
+            document.getElementById('edit-initial-visit-date').value = item.initialVisitDate;
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        // 출력 선택 페이지 열기
+        function openPrintSelect(id) {
+            window.open(`/guide/print-TA-select.html?id=${id}`, 'jaboPrint', 'width=700,height=800');
+        }
+
+        async function updateJaboInfo() {
+            const id = document.getElementById('edit-id').value;
+            const accidentDate = document.getElementById('edit-accident-date').value;
+            const initialVisitDate = document.getElementById('edit-initial-visit-date').value;
+
+            try {
+                const response = await fetch(`/api/jabo-patients/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accidentDate, initialVisitDate })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast('수정되었습니다.');
+                    closeModal('edit-modal');
+                    loadJaboPatients();
+                }
+            } catch (error) {
+                showToast('수정 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 합의 처리
+        async function settlePatient(id) {
+            if (!confirm('합의 처리하시겠습니까? 목록에서 제외됩니다.')) return;
+
+            try {
+                const response = await fetch(`/api/jabo-patients/${id}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (result.success) {
+                    showToast('합의 처리되었습니다.');
+                    loadJaboPatients();
+                }
+            } catch (error) {
+                showToast('처리 중 오류가 발생했습니다.');
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+
+        // 초기 로드
+        loadJaboPatients();
+
+        // 외부 클릭 시 드롭다운 닫기
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+
+</html>

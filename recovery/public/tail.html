@@ -1,0 +1,24 @@
+        function renderGenericResults(result) {
+            const data = result.data;
+
+            return `
+                <div class="inbody-grid">
+                    ${Object.entries(data).map(([key, value]) => `
+                        <div class="inbody-item">
+                            <div class="label">${key}</div>
+                            <div class="value">${value}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error-message').textContent = message || '? íš¨?˜ì? ?Šê±°??ë§Œë£Œ??ë§í¬?…ë‹ˆ??';
+        }
+    </script>
+</body>
+
+</html>

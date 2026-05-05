@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내원간격 분석 - 신방한의원 OS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Malgun Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f7fa;
+            padding: 25px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            font-size: 26px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-sub {
+            font-size: 13px;
+            color: #9ca3af;
+            font-weight: 400;
+        }
+
+        /* 요약 카드 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+            max-width: 600px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 22px 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 3px solid transparent;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card.active {
+            border-color: #667eea;
+        }
+
+        .stat-card h3 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-card p {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .stat-card .sub-info {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 4px;
+        }
+
+        .stat-card.red h3 {
+            color: #ef4444;
+        }
+
+        .stat-card.orange h3 {
+            color: #f59e0b;
+        }
+
+        /* 필터/검색 섹션 */
+        .filter-section {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-container {
+            position: relative;
+            flex: 0 0 300px;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 12px 14px 12px 40px;
+            border: 2px solid #f1f5f9;
+            border-radius: 10px;
+            font-size: 14px;
+            background: #f8fafc;
+            transition: all 0.2s;
+        }
+
+        .search-container input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-container::before {
+            content: '🔍';
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 280px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-dropdown.show {
+            display: block;
+        }
+
+        .search-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .search-item:hover,
+        .search-item.active {
+            background: #f1f5f9;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 10px 18px;
+            border: 2px solid #f1f5f9;
+            border-radius: 10px;
+            background: #f8fafc;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #64748b;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(118, 75, 162, 0.2);
+        }
+
+        .result-count {
+            font-size: 14px;
+            color: #64748b;
+            margin-left: auto;
+            font-weight: 600;
+        }
+
+        /* 테이블 섹션 */
+        .table-section {
+            background: white;
+            border-radius: 16px;
+            padding: 0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            border: 1px solid #f0f0f0;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 72vh;
+            overflow-y: auto;
+        }
+
+        .visit-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14.5px;
+            min-width: 1000px;
+        }
+
+        .visit-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .visit-table th {
+            background: #f8fafc;
+            padding: 16px 12px;
+            text-align: center;
+            font-weight: 700;
+            color: #475569;
+            border-bottom: 2px solid #f1f5f9;
+            white-space: nowrap;
+        }
+
+        .visit-table th:first-child {
+            text-align: left;
+            padding-left: 25px;
+        }
+
+        .visit-table td {
+            padding: 14px 12px;
+            text-align: center;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        .visit-table td:first-child {
+            text-align: left;
+            padding-left: 25px;
+        }
+
+        .visit-table tbody tr {
+            transition: background 0.15s;
+        }
+
+        .visit-table tbody tr:hover {
+            background: #f1f5ff;
+        }
+
+        .visit-table tbody tr.today-row {
+            background: #f0f7ff;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11.5px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .badge-today {
+            background: #e0e7ff;
+            color: #4338ca;
+        }
+
+        .badge-first-only {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .visit-date-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .visit-date-text {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .visit-interval {
+            font-size: 10.5px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .days-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .days-green { background: #dcfce7; color: #166534; }
+        .days-yellow { background: #fef9c3; color: #854d0e; }
+        .days-orange { background: #ffedd5; color: #9a3412; }
+        .days-red { background: #fee2e2; color: #991b1b; }
+        .days-black { background: #334155; color: white; }
+
+        .patient-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .patient-name {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 15.5px;
+        }
+
+        .patient-chart {
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 100px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state .icon {
+            font-size: 50px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .loading-overlay {
+            text-align: center;
+            padding: 80px;
+            color: #6366f1;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* 스크롤바 */
+        .table-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
+        .table-wrap::-webkit-scrollbar-track { background: #f8fafc; }
+        .table-wrap::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header-row">
+            <h1>📊 내원간격 분석 <span class="header-sub" id="today-display"></span></h1>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card red" onclick="setFilter('first-only')">
+                <h3 id="stat-first-only">-</h3>
+                <p>초진 후 미재진</p>
+                <div class="sub-info" id="stat-first-only-rate">전체 초진 -명 대비 -%</div>
+            </div>
+            <div class="stat-card orange" onclick="setFilter('30plus')">
+                <h3 id="stat-over30">-</h3>
+                <p>30일+ 미내원</p>
+                <div class="sub-info">마지막 내원 후 30일 이상 경과</div>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="search-container">
+                <input type="text" id="patient-search" placeholder="환자명 또는 차트번호 검색..." autocomplete="off">
+                <div id="search-dropdown" class="search-dropdown"></div>
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">전체</button>
+                <button class="filter-btn" data-filter="7" onclick="setFilter('7')">7일 이내</button>
+                <button class="filter-btn" data-filter="15" onclick="setFilter('15')">8~15일</button>
+                <button class="filter-btn" data-filter="30" onclick="setFilter('30')">16~30일</button>
+                <button class="filter-btn" data-filter="30plus" onclick="setFilter('30plus')">30일+</button>
+                <button class="filter-btn" data-filter="first-only" onclick="setFilter('first-only')">초진 후 미재진</button>
+            </div>
+            <div class="result-count" id="result-count"></div>
+        </div>
+
+        <div class="table-section">
+            <div class="table-wrap">
+                <table class="visit-table">
+                    <thead>
+                        <tr>
+                            <th>환자</th>
+                            <th>상태</th>
+                            <th>총 내원</th>
+                            <th>내원일 ①</th>
+                            <th>내원일 ②</th>
+                            <th>내원일 ③</th>
+                            <th>내원일 ④</th>
+                            <th>내원일 ⑤</th>
+                            <th>마지막 경과</th>
+                        </tr>
+                    </thead>
+                    <tbody id="visit-tbody">
+                        <tr>
+                            <td colspan="9" class="loading-overlay">📊 데이터를 분석 중입니다...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = [];
+        let allPatients = [];
+        let currentFilter = 'all';
+        let currentSearch = '';
+        let currentFocus = -1;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+            document.getElementById('today-display').textContent =
+                `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')} (${dayNames[today.getDay()]})`;
+
+            loadData();
+            loadPatients();
+        });
+
+        async function loadData() {
+            try {
+                const params = new URLSearchParams();
+                if (currentFilter !== 'all') params.set('filter', currentFilter);
+                if (currentSearch) params.set('search', currentSearch);
+
+                const res = await fetch(`/api/visit-analysis?${params}`);
+                const result = await res.json();
+
+                if (!result.success) return;
+
+                allData = result.data || [];
+                renderSummary(result.summary || {});
+                renderTable(allData);
+
+            } catch (error) {
+                console.error('로드 실패:', error);
+                document.getElementById('visit-tbody').innerHTML =
+                    '<tr><td colspan="9" class="empty-state"><div class="icon">⚠️</div><p>데이터를 불러올 수 없습니다</p></td></tr>';
+            }
+        }
+
+        async function loadPatients() {
+            try {
+                const res = await fetch('/api/patients');
+                const result = await res.json();
+                if (result.success) allPatients = result.data || [];
+            } catch (e) {}
+        }
+
+        function renderSummary(summary) {
+            document.getElementById('stat-first-only').textContent = summary.firstVisitOnlyCount + '명';
+            document.getElementById('stat-first-only-rate').textContent =
+                `전체 초진 ${summary.totalFirstVisitPatients || 0}명 대비 ${summary.firstVisitOnlyRate || 0}%`;
+            document.getElementById('stat-over30').textContent = summary.over30DaysCount + '명';
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('visit-tbody');
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><div class="icon">📋</div><p>데이터가 없습니다</p></td></tr>';
+                document.getElementById('result-count').textContent = '0명';
+                return;
+            }
+
+            document.getElementById('result-count').textContent = `${data.length}명`;
+
+            tbody.innerHTML = data.map(p => {
+                let statusBadge = '';
+                if (p.isToday) statusBadge = '<span class="badge badge-today">오늘 내원</span>';
+                else if (p.isFirstOnly) statusBadge = '<span class="badge badge-first-only">초진 후 미재진</span>';
+
+                const dateCells = [];
+                for (let i = 0; i < 5; i++) {
+                    if (p.recentDates && p.recentDates[i]) {
+                        const d = p.recentDates[i];
+                        const parts = d.split('-');
+                        const dateStr = `${parts[1]}/${parts[2]}`;
+                        const interval = (p.intervals && p.intervals[i] !== undefined) ? p.intervals[i] : null;
+
+                        dateCells.push(`<td>
+                            <div class="visit-date-cell">
+                                <span class="visit-date-text">${dateStr}</span>
+                                ${interval !== null ? `<span class="visit-interval">${interval}일 간격</span>` : ''}
+                            </div>
+                        </td>`);
+                    } else {
+                        dateCells.push('<td><span style="color:#e2e8f0">-</span></td>');
+                    }
+                }
+
+                const days = p.daysSinceLastVisit;
+                let daysClass = 'days-green';
+                if (p.isToday) daysClass = 'days-green';
+                else if (p.isFirstOnly) daysClass = 'days-black';
+                else if (days > 30) daysClass = 'days-red';
+                else if (days > 15) daysClass = 'days-orange';
+                else if (days > 7) daysClass = 'days-yellow';
+
+                const daysText = p.isToday ? '오늘' : `${days}일`;
+
+                return `<tr class="${p.isToday ? 'today-row' : ''}">
+                    <td>
+                        <div class="patient-info">
+                            <span class="patient-name">${escapeHtml(p.name)}</span>
+                            <span class="patient-chart">#${escapeHtml(p.chartNo)}</span>
+                        </div>
+                    </td>
+                    <td>${statusBadge}</td>
+                    <td><strong>${p.totalVisits}</strong>회</td>
+                    ${dateCells.join('')}
+                    <td><span class="days-badge ${daysClass}">${daysText}</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === filter));
+            document.querySelectorAll('.stat-card').forEach(card => card.classList.remove('active'));
+            if (filter === 'first-only') document.querySelector('.stat-card.red').classList.add('active');
+            else if (filter === '30plus') document.querySelector('.stat-card.orange').classList.add('active');
+            loadData();
+        }
+
+        const searchInput = document.getElementById('patient-search');
+        const searchDropdown = document.getElementById('search-dropdown');
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            if (query.length < 1) {
+                searchDropdown.classList.remove('show');
+                if (currentSearch) { currentSearch = ''; loadData(); }
+                return;
+            }
+            const q = query.toLowerCase();
+            const filtered = allPatients.filter(p =>
+                p.name.toLowerCase().includes(q) || (p.chartNo && p.chartNo.toLowerCase().includes(q))
+            ).slice(0, 10);
+
+            if (filtered.length === 0) {
+                searchDropdown.innerHTML = '<div class="search-item" style="color:#94a3b8;cursor:default">검색 결과 없음</div>';
+            } else {
+                searchDropdown.innerHTML = filtered.map(p =>
+                    `<div class="search-item" onclick="selectSearchPatient('${escapeHtml(p.name)}')">
+                        <span>${escapeHtml(p.name)}</span>
+                        <span style="color:#94a3b8;font-size:12px">#${escapeHtml(p.chartNo || '')}</span>
+                    </div>`
+                ).join('');
+            }
+            searchDropdown.classList.add('show');
+        });
+
+        function selectSearchPatient(name) {
+            searchInput.value = name;
+            currentSearch = name;
+            searchDropdown.classList.remove('show');
+            loadData();
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) searchDropdown.classList.remove('show');
+        });
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+</body>
+
+</html>

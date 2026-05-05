@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자동차보험 안내문</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            margin: 0;
+            color: #212529;
+            background-color: #f8f9fa;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .container {
+            width: 210mm;
+            padding: 15mm;
+            margin: auto;
+            background-color: #fff;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            min-height: 297mm;
+        }
+
+        h1 {
+            text-align: center;
+            color: #0056b3;
+            font-size: 21pt;
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #0056b3;
+        }
+
+        p {
+            line-height: 1.5;
+            margin: 0 0 8px 0;
+            font-size: 10.5pt;
+        }
+
+        .highlight {
+            font-weight: bold;
+            color: #0056b3;
+        }
+
+        .highlight-red {
+            font-weight: bold;
+            color: #c92a2a;
+        }
+
+        section {
+            margin-bottom: 14px;
+        }
+
+        .info-box {
+            border: 1px solid #dee2e6;
+            padding: 12px 18px;
+            margin: 14px 0;
+            border-radius: 6px;
+        }
+
+        .info-box p {
+            margin-bottom: 5px;
+            font-size: 10.2pt;
+        }
+
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .sub-text {
+            font-size: 9.5pt;
+            color: #495057;
+            padding: 5px 0 5px 15px;
+            border-left: 3px solid #0056b3;
+            margin: 10px 0;
+        }
+
+        .sub-text p {
+            margin-bottom: 5px;
+        }
+
+        .footer {
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid #ced4da;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .footer-item {
+            flex: 1;
+            text-align: center;
+        }
+
+        .footer-item.center-text {
+            flex: 1.5;
+            align-self: center;
+            font-size: 10pt;
+            color: #6c757d;
+        }
+
+        .qr-code {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 5px;
+        }
+
+        .qr-caption {
+            font-size: 9pt;
+            color: #495057;
+            margin: 0;
+        }
+
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #e9ecef;
+            margin: 15px 0;
+        }
+
+        @media print {
+            body {
+                background-color: #fff;
+                margin: 0;
+            }
+
+            .print-button {
+                display: none;
+            }
+
+            .container {
+                width: 100%;
+                min-height: 0;
+                height: auto;
+                padding: 0;
+                margin: 0;
+                box-shadow: none;
+                border: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <button class="print-button" onclick="window.print()">🖨️ 인쇄하기</button>
+
+    <div class="container" id="content">
+        <p style="text-align: center;">로딩 중...</p>
+    </div>
+
+    <script>
+        // URL 파라미터에서 환자 ID와 타입 추출
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientId = urlParams.get('id');
+        const printType = urlParams.get('type') || 'choejin';
+        const diagnosisWeeks = parseInt(urlParams.get('weeks')) || 2; // 기본 2주
+
+        // 요일 배열
+        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+
+        // 환자 정보 로드 및 안내문 생성
+        async function loadAndRender() {
+            if (!patientId) {
+                document.getElementById('content').innerHTML = '<p style="text-align:center; color:red;">환자 ID가 필요합니다.</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/jabo-patients/${patientId}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    document.getElementById('content').innerHTML = '<p style="text-align:center; color:red;">환자 정보를 불러올 수 없습니다.</p>';
+                    return;
+                }
+
+                renderDocument(data.data, printType);
+            } catch (error) {
+                console.error(error);
+                document.getElementById('content').innerHTML = '<p style="text-align:center; color:red;">오류가 발생했습니다.</p>';
+            }
+        }
+
+        // 경과일 계산
+        function calculateDaysPassed(startDateStr, endDate = new Date()) {
+            const start = new Date(startDateStr);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(endDate);
+            end.setHours(0, 0, 0, 0);
+            const diffMs = end - start;
+            return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+        }
+
+        // 주차 계산
+        function calculateWeekNumber(daysPassed) {
+            if (daysPassed <= 0) return 1;
+            return Math.floor((daysPassed - 1) / 7) + 1;
+        }
+
+        // 주간 내원 횟수 텍스트
+        function getVisitsPerWeek(week) {
+            if (week <= 3) return '매일 (주 7회) 내원 가능';
+            if (week >= 4 && week <= 10) return '주 3회 내원 가능';
+            if (week >= 11 && week <= 24) return '주 2회 내원 가능';
+            return '주 1회 내원 가능';
+        }
+
+        // 간단한 날짜 포맷
+        function formatSimpleDate(date) {
+            const d = new Date(date);
+            return `${d.getMonth() + 1}/${d.getDate()}(${dayNames[d.getDay()]})`;
+        }
+
+        // 전체 날짜 포맷
+        function formatFullDate(date) {
+            const d = new Date(date);
+            return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+        }
+
+        // 스케줄 HTML 생성
+        function createScheduleHtml(diffDays) {
+            let scheduleHtml = '';
+            const today = new Date();
+            const currentWeek = calculateWeekNumber(diffDays);
+            const daysIntoWeek = (diffDays - 1) % 7;
+            let currentStartDate = new Date(today);
+
+            for (let i = 0; i < 4; i++) {
+                const week = currentWeek + i;
+                const visits = getVisitsPerWeek(week);
+                let startDateText;
+                let endDate;
+
+                if (i === 0) {
+                    startDateText = '오늘';
+                    const remainingDays = 6 - daysIntoWeek;
+                    endDate = new Date(currentStartDate.getTime() + remainingDays * 24 * 60 * 60 * 1000);
+                } else {
+                    startDateText = formatSimpleDate(currentStartDate);
+                    endDate = new Date(currentStartDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+                }
+
+                const dateRangeString = `(${startDateText} ~ ${formatSimpleDate(endDate)})`;
+                scheduleHtml += `<p><strong>▶ ${week}주차 ${dateRangeString}:</strong> ${visits}</p>`;
+
+                currentStartDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000);
+            }
+
+            return scheduleHtml;
+        }
+
+        // 문서 렌더링
+        function renderDocument(patient, type) {
+            const today = new Date();
+            const accidentDate = new Date(patient.accidentDate);
+            const diffDays = calculateDaysPassed(patient.accidentDate, today);
+            const currentWeek = calculateWeekNumber(diffDays);
+            const accidentDateFormatted = formatFullDate(accidentDate);
+
+            // QR 코드 URL
+            const leftQrUrl = 'https://m.booking.naver.com/booking/13/bizes/337551';
+            const rightQrUrl = 'https://chasago.upstream.co.kr';
+            const leftQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(leftQrUrl)}`;
+            const rightQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(rightQrUrl)}`;
+
+            // 스케줄 HTML
+            const scheduleHtml = createScheduleHtml(diffDays);
+
+            // 타입별 내용
+            let documentTitle, introParagraph, diagnosisSection, finalNotice;
+
+            if (type === 'choejin') {
+                documentTitle = '신방한의원 자동차보험 치료 안내문';
+                introParagraph = `<p>오늘 첫 내원으로 신방한의원에서 향후 4주간 치료 받으실 수 있는 내원 가능 횟수는 다음과 같습니다.</p>`;
+
+                const diagnosisDate = new Date(accidentDate.getTime());
+                diagnosisDate.setDate(accidentDate.getDate() + 27);
+                const diagnosisDateString = formatFullDate(diagnosisDate);
+
+                if (diffDays >= 29) {
+                    diagnosisSection = `<p>자동차보험사(담당자)로부터 제출을 요청받은 기한 이전에 진단서를 제출하여 치료기간을 연장하실 수 있습니다.</p>`;
+                } else {
+                    diagnosisSection = `<p>사고일로부터 28일차(<span class="highlight">${diagnosisDateString}</span>)에는 진단서를 제출하여 치료기간을 연장하실 수 있습니다. <br>신방한의원에서 치료 내역을 기준으로 진단서를 발급해 드립니다.</p>`;
+                }
+
+                finalNotice = `사고 후 첫 일주일 동안은 증상이 지속적으로 변화하고 진행될 수 있습니다.<br>이 시기에는 매일 내원하여 모든 증상 변화를 상세히 알려주시기 바랍니다.<br>이러한 증상들은 진료기록으로 기록되며,<br>증상 변화에 따라 추가 검사가 필요한지 면밀히 관찰하겠습니다.`;
+            } else {
+                documentTitle = '신방한의원 치료 연장 안내문';
+                introParagraph = `<p>보험사에 진단서 제출 후 치료기간이 연장되면, 신방한의원에서 향후 4주간 치료 받으실 수 있는 내원 가능 횟수는 다음과 같습니다.</p>`;
+
+                // 선택에 따라 2주/3주/4주 차등 적용
+                let daysToAdd, dayCountText;
+                if (diagnosisWeeks === 3) {
+                    daysToAdd = 20;  // 21일차 = 20일 후
+                    dayCountText = '21일차';
+                } else if (diagnosisWeeks === 4) {
+                    daysToAdd = 27;  // 28일차 = 27일 후
+                    dayCountText = '28일차';
+                } else {
+                    daysToAdd = 13;  // 14일차 = 13일 후 (기본 2주)
+                    dayCountText = '14일차';
+                }
+
+                const nextDiagnosisDate = new Date(today);
+                nextDiagnosisDate.setDate(today.getDate() + daysToAdd);
+                const nextDiagnosisDateString = formatSimpleDate(nextDiagnosisDate);
+
+                diagnosisSection = `<p>진단서 발급일로부터 ${dayCountText}(<span class="highlight">${nextDiagnosisDateString}</span>)에는 진단서를 제출하여 치료기간을 연장할 수 있습니다.
+                <br><span style="font-size: 9pt;">(단, 지불보증만료일을 넘겨서 진단서를 제출하면 상기 예정 날짜가 달라질 수 있습니다.)</span><br>신방한의원에서 치료 내역을 기준으로 진단서를 발급해 드립니다.</p>`;
+
+                finalNotice = `증상으로 인한 일상생활의 불편감이 지속될 수 있습니다. <br>신방한의원은 체계적인 치료를 통해 후유증 없이 회복하실 수 있도록 최선을 다하겠습니다.<br>내원 가능한 횟수를 미리 확인하시고, 편하신 시간에 내원해 주시기 바랍니다.`;
+            }
+
+            // HTML 렌더링
+            document.getElementById('content').innerHTML = `
+                <header><h1>${documentTitle}</h1></header>
+                <main>
+                    <section class="intro">
+                        <p><strong>${patient.patientName}</strong> 님, 사고로 인한 불편감이 후유증으로 남지 않도록 최선을 다해 치료하겠습니다.</p>
+                        ${introParagraph}
+                    </section>
+                    <section class="schedule">
+                        <div class="info-box">
+                            <p style="margin-bottom:12px;">※ 오늘은 수상일(<span class="highlight-red">${accidentDateFormatted}</span>)으로부터 <span class="highlight">${diffDays}일차(${currentWeek}주차)</span> 입니다.</p>
+                            ${scheduleHtml}
+                        </div>
+                    </section>
+                    <section class="treatment-info">
+                        <p><strong>한약처방</strong>은 1사고당 7일치씩 <span class="highlight">총 3회</span> 받으실 수 있습니다.</p>
+                        <div class="sub-text">
+                            <p>신방한의원에서는 증상에 따라 <strong>진맥 및 검사(뇌파/맥파(자율신경계)·체성분·혈액검사)를 통해<br>한약을 직접 탕전</strong>해서 드립니다.<br> 내 증상에 맞는 한약으로 사고로 인한 증상 관리 추천드립니다!</p>
+                        </div>
+                        <p style="margin-top: 20px;"><strong>추나치료</strong>는 1사고당 <span class="highlight">총 20회</span>(타 의료기관 합산)까지 받으실 수 있습니다.</p>
+                        <div class="sub-text">
+                            <p>신방한의원에서는 <strong>체형 검사를 진행하여 증상과 체형에 따라 보다 세심한 추나치료로 진행</strong>됩니다.</p>
+                        </div>
+                    </section>
+                    <hr>
+                    <section class="diagnosis-info">
+                        <div class="sub-text">
+                            ${diagnosisSection}
+                            <p style="margin-top: 8px;">진단서 발급비용은 유료(20,000원)이며, 영수증으로 자동차보험회사에 청구하실 수 있습니다.</p>
+                        </div>
+                    </section>
+                    <hr>
+                    <section class="extra-info">
+                        <div class="sub-text">
+                            <p><strong>신경학적 증상(두통·어지럼·구역감·구토)</strong>이 오래 가는 경우, 이학적 검사를 근거로,<br>    필요시 정밀검사(뇌CT)를 의뢰드립니다.</p>
+                            <p><strong>신경통이나 디스크</strong>로 의심되는 증상이 있을 경우, 이학적 검사를 근거로,<br>    필요시 정밀검사(MRI)를 의뢰드립니다.</p>
+                            <p><strong>심한 타박·인대염좌·골절</strong> 등이 의심되는 경우, 본원에 있는 초음파 검사를 통해 진단합니다.</p>
+                        </div>
+                    </section>
+                    <hr>
+                    <section class="final-notice">
+                        <p style="text-align:center;">${finalNotice}</p>
+                    </section>
+                </main>
+                <footer class="footer">
+                    <div class="footer-item">
+                        <img class="qr-code" src="${leftQrImageUrl}" alt="신방한의원 네이버예약하기">
+                        <p class="qr-caption">신방한의원 네이버예약하기</p>
+                    </div>
+                    <div class="footer-item center-text">
+                        <p style="margin-bottom: 0;">언제나 환자분의 빠른 쾌유를 위해<br>최선을 다하겠습니다. <br><strong>신방한의원 드림</strong></p>
+                    </div>
+                    <div class="footer-item">
+                        <img class="qr-code" src="${rightQrImageUrl}" alt="교통사고 치료비 계산기">
+                        <p class="qr-caption">교통사고 치료비 계산기</p>
+                    </div>
+                </footer>
+            `;
+
+            document.title = `${patient.patientName} - ${documentTitle}`;
+        }
+
+        // 로드
+        loadAndRender();
+    </script>
+</body>
+
+</html>

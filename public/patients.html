@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>환자 관리 - 신방한의원 OS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Malgun Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: none;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 26px;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* 섹션 */
+        .section {
+            background: white;
+            border-radius: 14px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        /* 폼 */
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        input {
+            padding: 12px 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* 버튼 */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        /* 통계 카드 */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-card.green {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .stat-card.blue {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        .stat-card h3 {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* 테이블 */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        /* 상세 처방 뱃지 스타일 */
+        .badge {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: white;
+            font-weight: 600;
+            display: inline-block;
+            margin-right: 4px;
+        }
+
+        .badge-jabo {
+            background: #3498db;
+        }
+
+        .badge-deer {
+            background: #e74c3c;
+        }
+
+        .badge-preg {
+            background: #ff69b4;
+        }
+
+        .badge-preset {
+            background: #9b59b6;
+        }
+
+        .badge-normal {
+            background: #2ecc71;
+        }
+
+        .badge-payment {
+            background: #f39c12;
+        }
+
+        /* 비급여 수납용 */
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            table-layout: fixed;
+        }
+
+        th,
+        td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #667eea;
+            font-size: 13px;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #9ca3af;
+            padding: 40px;
+            font-size: 15px;
+        }
+
+        /* 검색 */
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding-left: 45px;
+        }
+
+        .search-box::before {
+            content: "🔍";
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+        }
+
+        /* 토글 스위치 */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #fef2f2;
+            border-radius: 10px;
+            border: 2px solid #fecaca;
+        }
+
+        .toggle-row.active {
+            background: #dcfce7;
+            border-color: #86efac;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .3s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background-color: #ef4444;
+        }
+
+        .toggle-switch input:checked+.toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        .toggle-label {
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .jabo-fields {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #fef2f2;
+            border-radius: 10px;
+        }
+
+        .jabo-fields.show {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>
+            <span>👤 환자 관리</span>
+        </h1>
+
+        <!-- 통계 -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <h3 id="total-patients">-</h3>
+                <p>전체 환자 수</p>
+            </div>
+            <div class="stat-card green">
+                <h3 id="month-patients">-</h3>
+                <p>이번 달 신규</p>
+            </div>
+            <div class="stat-card blue">
+                <h3 id="week-patients">-</h3>
+                <p>이번 주 신규</p>
+            </div>
+        </div>
+
+        <!-- 새 환자 등록 (전폭 배치) -->
+        <div class="section">
+            <h2 class="section-title">새 환자 등록</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>환자명 *</label>
+                    <input type="text" id="patient-name" placeholder="홍길동">
+                </div>
+                <div class="form-group">
+                    <label>차트번호 *</label>
+                    <input type="text" id="patient-chart" placeholder="12345">
+                </div>
+                <div class="form-group">
+                    <label>전화번호 *</label>
+                    <input type="text" id="patient-phone" placeholder="010-1234-5678"
+                        oninput="formatPhoneNumber(this)" maxlength="13">
+                </div>
+                <div class="form-group">
+                    <label>생년월일-성별 <span
+                            style="font-weight: normal; color: #9ca3af; font-size: 12px;">(선택)</span></label>
+                    <input type="text" id="patient-birthgender" placeholder="990101-1"
+                        oninput="formatBirthGender(this)" maxlength="8" style="width: 100px;">
+                </div>
+            </div>
+
+            <!-- 주소 입력 -->
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label>주소 <span style="font-weight: normal; color: #9ca3af; font-size: 12px;">(선택)</span></label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="patient-address" placeholder="주소 검색을 클릭하세요" readonly
+                        style="flex: 1; background: #f9fafb; cursor: pointer;" onclick="openAddressSearch()">
+                    <button type="button" class="btn btn-secondary" onclick="openAddressSearch()"
+                        style="white-space: nowrap;">🔍 주소 검색</button>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <input type="text" id="patient-address-detail" placeholder="상세주소 (동/호수) 예: 101동 1001호"
+                    style="width: 100%;">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="addPatient()">환자 추가</button>
+                <button class="btn btn-secondary" onclick="clearForm()">초기화</button>
+            </div>
+        </div>
+
+        <!-- 환자 목록 & 상세 정보 (좌우 1:1 분할) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- 환자 목록 (좌측) -->
+            <div class="section" style="flex: 1; min-width: 400px;">
+                <h2 class="section-title">환자 목록</h2>
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="이름, 차트번호, 전화번호로 검색..." oninput="searchPatients()">
+                </div>
+                <div id="patient-list" style="max-height: 500px; overflow-y: auto;">
+                    <p class="no-data">환자 목록을 불러오는 중...</p>
+                </div>
+            </div>
+
+            <!-- 환자 상세 정보 (우측) -->
+            <div class="section" id="patient-detail-section" style="flex: 1; min-width: 400px;">
+                <h2 class="section-title">📋 환자 상세 정보</h2>
+                <div id="patient-detail-content" style="max-height: 500px; overflow-y: auto;">
+                    <p class="no-data" style="padding: 50px; text-align: center; color: #9ca3af;">👈 환자를 선택하세요</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allPatients = [];
+
+        // 전화번호 자동 포맷팅 (010-1234-5678)
+        function formatPhoneNumber(input) {
+            let value = input.value.replace(/[^0-9]/g, ''); // 숫자만 추출
+
+            if (value.length > 11) {
+                value = value.slice(0, 11);
+            }
+
+            if (value.length > 7) {
+                input.value = value.slice(0, 3) + '-' + value.slice(3, 7) + '-' + value.slice(7);
+            } else if (value.length > 3) {
+                input.value = value.slice(0, 3) + '-' + value.slice(3);
+            } else {
+                input.value = value;
+            }
+        }
+
+        // 생년월일-성별 자동 포맷팅 (990101-1)
+        function formatBirthGender(input) {
+            let value = input.value.replace(/[^0-9]/g, ''); // 숫자만 추출
+
+            if (value.length > 7) {
+                value = value.slice(0, 7);
+            }
+
+            if (value.length > 6) {
+                input.value = value.slice(0, 6) + '-' + value.slice(6);
+            } else {
+                input.value = value;
+            }
+        }
+
+        // 초기화
+        async function init() {
+            await loadPatients();
+
+            // 이미지 환자 검색 키보드 제어 연결
+            const imgSearch = document.getElementById('image-patient-search');
+            if (imgSearch) {
+                imgSearch.addEventListener('input', searchImagePatient);
+                imgSearch.addEventListener('keydown', onImageSearchKeyDown);
+            }
+        }
+
+        // 환자 목록 로드
+        async function loadPatients() {
+            try {
+                const response = await fetch('/api/patients');
+                const result = await response.json();
+
+                if (result.success) {
+                    allPatients = result.data;
+
+                    // 전체 환자 수
+                    document.getElementById('total-patients').textContent = allPatients.length + '명';
+
+                    // 이번 달 신규 환자
+                    const now = new Date();
+                    const thisMonth = now.toISOString().slice(0, 7); // YYYY-MM
+                    const monthPatients = allPatients.filter(p => {
+                        if (!p.createdAt) return false;
+                        return p.createdAt.slice(0, 7) === thisMonth;
+                    });
+                    document.getElementById('month-patients').textContent = monthPatients.length + '명';
+
+                    // 이번 주 신규 환자 (월요일 기준)
+                    const monday = new Date(now);
+                    monday.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+                    monday.setHours(0, 0, 0, 0);
+                    const weekPatients = allPatients.filter(p => {
+                        if (!p.createdAt) return false;
+                        return new Date(p.createdAt) >= monday;
+                    });
+                    document.getElementById('week-patients').textContent = weekPatients.length + '명';
+
+                    displayPatients(allPatients);
+                }
+            } catch (error) {
+                console.error('환자 목록 로드 실패:', error);
+                document.getElementById('patient-list').innerHTML = '<p class="no-data">환자 목록을 불러올 수 없습니다.</p>';
+            }
+        }
+
+        let displayedPatients = [];
+        let currentRenderCount = 0;
+        const RENDER_CHUNK_SIZE = 50;
+
+        // 환자 목록 표시 (초기화)
+        function displayPatients(patients) {
+            // 이름순 정렬
+            displayedPatients = [...patients].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+            currentRenderCount = 0;
+
+            const container = document.getElementById('patient-list');
+
+            if (!displayedPatients || displayedPatients.length === 0) {
+                container.innerHTML = '<p class="no-data">등록된 환자가 없습니다.</p>';
+                return;
+            }
+
+            // 테이블 기본 구조 생성
+            container.innerHTML = `
+                <table id="patient-table">
+                    <thead style="position: sticky; top: 0; background: #f9fafb; z-index: 1;">
+                        <tr>
+                            <th>이름</th>
+                            <th>차트번호</th>
+                            <th>생년월일</th>
+                            <th>전화번호</th>
+                            <th>등록일</th>
+                            <th style="width: 120px;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patient-tbody">
+                    </tbody>
+                </table>
+            `;
+
+            renderMorePatients();
+
+            // 스크롤 이벤트 리스너 등록 (한 번만)
+            if (!container.onscroll) {
+                container.onscroll = function () {
+                    if (container.scrollTop + container.clientHeight >= container.scrollHeight - 100) {
+                        renderMorePatients();
+                    }
+                };
+            }
+        }
+
+        // 추가 환자 렌더링
+        function renderMorePatients() {
+            if (currentRenderCount >= displayedPatients.length) return;
+
+            const nextCount = Math.min(currentRenderCount + RENDER_CHUNK_SIZE, displayedPatients.length);
+            const chunk = displayedPatients.slice(currentRenderCount, nextCount);
+            const tbody = document.getElementById('patient-tbody');
+
+            let html = '';
+            chunk.forEach(p => {
+                const createdDate = p.createdAt ? new Date(p.createdAt).toLocaleDateString('ko-KR') : '-';
+                const escapedAddress = (p.address || '').replace(/'/g, "\\'");
+                const escapedBirthGender = (p.birthGender || '').replace(/'/g, "\\'");
+
+                html += `
+                    <tr onclick="showPatientDetail(${p.id})" style="cursor: pointer; transition: background 0.2s;" 
+                        onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background='white'">
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.chartNo || '-'}</td>
+                        <td style="color: #6b7280; font-size: 13px;">${p.birthGender || '-'}</td>
+                        <td>${p.phone || '-'}</td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <button onclick="event.stopPropagation(); showEditPatientModal(${p.id}, '${p.name}', '${p.chartNo || ''}', '${p.phone || ''}', '${escapedAddress}', '${escapedBirthGender}')" 
+                                    style="padding: 4px 10px; font-size: 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">✏️</button>
+                            <button onclick="event.stopPropagation(); deletePatient(${p.id}, '${p.name}')" 
+                                    style="padding: 4px 10px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.insertAdjacentHTML('beforeend', html);
+            currentRenderCount = nextCount;
+        }
+
+        // 환자 검색
+        function searchPatients() {
+            const query = document.getElementById('search-input').value.trim().toLowerCase();
+
+            if (!query) {
+                displayPatients(allPatients);
+                return;
+            }
+
+            const filtered = allPatients.filter(p =>
+                (p.name && p.name.toLowerCase().includes(query)) ||
+                (p.chartNo && p.chartNo.includes(query)) ||
+                (p.phone && p.phone.includes(query))
+            );
+
+            displayPatients(filtered);
+        }
+
+        // 환자 추가
+        async function addPatient() {
+            const name = document.getElementById('patient-name').value.trim();
+            const chartNo = document.getElementById('patient-chart').value.trim();
+            const phone = document.getElementById('patient-phone').value.trim();
+            const birthGender = document.getElementById('patient-birthgender').value.trim();
+            const addressBase = document.getElementById('patient-address').value.trim();
+            const addressDetail = document.getElementById('patient-address-detail').value.trim();
+            const address = addressDetail ? (addressBase + ' ' + addressDetail) : addressBase;
+
+            if (!name || !chartNo || !phone) {
+                alert('필수 항목을 입력해주세요.\n(환자명, 차트번호, 전화번호)');
+                return;
+            }
+
+            // 생년월일-성별 형식 검증 (6자리-1자리) - 값이 있을 때만 검증
+            if (birthGender && !/^\d{6}-[1-8]$/.test(birthGender)) {
+                alert('생년월일-성별을 올바른 형식으로 입력해주세요.\n예: 990101-1');
+                return;
+            }
+
+            try {
+                // 환자 등록
+                const patientResponse = await fetch('/api/patients', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, chartNo, phone, address, birthGender })
+                });
+
+                const patientResult = await patientResponse.json();
+
+                if (patientResult.success) {
+                    alert('✅ 환자가 등록되었습니다.');
+                    clearForm();
+                    await loadPatients();
+                } else {
+                    alert('❌ 환자 등록 실패: ' + patientResult.message);
+                }
+            } catch (error) {
+                console.error('환자 추가 실패:', error);
+                alert('❌ 네트워크 오류가 발생했습니다.');
+            }
+        }
+
+        // 오시는 길 알림톡 발송
+        async function sendDirectionsAlimTalk() {
+            const phoneInput = document.getElementById('header-phone-input');
+            const phone = phoneInput.value.trim();
+
+            if (!phone) {
+                alert('전화번호를 입력해주세요.');
+                phoneInput.focus();
+                return;
+            }
+
+            // 전화번호 유효성 검사 (간단하게)
+            if (phone.length < 10) {
+                alert('올바른 전화번호를 입력해주세요.');
+                return;
+            }
+
+            if (!confirm(`${phone} 번호로 [오시는 길] 알림톡을 발송하시겠습니까?`)) {
+                return;
+            }
+
+            const alimtalkContent = `[신방한의원] 오시는 길 안내 📍
+
+안녕하세요, 신방한의원입니다. 😊
+
+문의하신 오시는 길 정보를 보내드립니다.
+
+▼아래 버튼▼을 클릭하시면 상세한 경로를 확인하실 수 있습니다. 
+
+길을 찾기 어려우시면 주저 말고 바로 전화 주세요!
+친절히 안내 도와드리겠습니다.
+
+감사합니다.`;
+
+            const buttons = [
+                {
+                    type: "WL",
+                    name: "🚶 오시는 길",
+                    linkMobile: "https://map.naver.com",
+                    linkPc: "https://map.naver.com",
+                    schemeIos: "",
+                    schemeAndroid: ""
+                }
+            ];
+            const failoverMessage = `[신방한의원] 오시는 길 안내
+주소: 충남 천안시 서북구 신방동
+상세 약도: https://map.naver.com
+
+문의: 041-577-8575`;
+
+            try {
+                const response = await fetch('/api/messages/send-alimtalk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        patients: [{
+                            name: '고객',
+                            chartNo: '-',
+                            phone: phone,
+                            customContent: alimtalkContent
+                        }],
+                        buttons: buttons,
+                        failoverMessage: failoverMessage,
+                        templateCode: 'directions'
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ 알림톡 발송 완료!');
+                    phoneInput.value = ''; // 발송 후 초기화
+                } else {
+                    alert('❌ 발송 실패: ' + (result.message || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('알림톡 발송 오류:', error);
+                alert('❌ 네트워크 오류가 발생했습니다.');
+            }
+        }
+
+
+        // 폼 초기화
+        function clearForm() {
+            if (document.getElementById('patient-name')) document.getElementById('patient-name').value = '';
+            if (document.getElementById('patient-chart')) document.getElementById('patient-chart').value = '';
+            if (document.getElementById('patient-phone')) document.getElementById('patient-phone').value = '';
+            if (document.getElementById('patient-birthgender')) document.getElementById('patient-birthgender').value = '';
+            if (document.getElementById('patient-address')) document.getElementById('patient-address').value = '';
+            if (document.getElementById('patient-address-detail')) document.getElementById('patient-address-detail').value = '';
+            
+            const isJabo = document.getElementById('is-jabo');
+            if (isJabo) isJabo.checked = false;
+            
+            const accidentDate = document.getElementById('accident-date');
+            if (accidentDate) accidentDate.value = '';
+            
+            const firstVisitDate = document.getElementById('first-visit-date');
+            if (firstVisitDate) firstVisitDate.value = '';
+            
+            const jaboFields = document.getElementById('jabo-fields');
+            if (jaboFields) jaboFields.classList.remove('show');
+            
+            const jaboToggleRow = document.getElementById('jabo-toggle-row');
+            if (jaboToggleRow) jaboToggleRow.classList.remove('active');
+        }
+
+        // ===========================================
+        // 환자 상세 정보 표시
+        // ===========================================
+
+        let selectedPatientForDetail = null;
+
+        async function showPatientDetail(patientId) {
+            const patient = allPatients.find(p => p.id === patientId);
+            if (!patient) return;
+
+            selectedPatientForDetail = patient;
+            const content = document.getElementById('patient-detail-content');
+            content.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:20px;">로딩 중...</p>';
+
+            let bookingHistory = [];
+            let messageHistory = [];
+
+            try {
+                // 예약 내역 및 메시지 내역 동시 조회
+                const [dashboardRes, talkRes] = await Promise.all([
+                    fetch(`/api/dashboard/patient/${patient.chartNo}`),
+                    fetch(`/api/message-history/${patient.chartNo}`)
+                ]);
+
+                if (dashboardRes.ok) {
+                    const dashboardData = await dashboardRes.json();
+                    if (dashboardData.success && dashboardData.data.bookings) {
+                        bookingHistory = dashboardData.data.bookings;
+                    }
+                }
+
+                if (talkRes.ok) {
+                    const talkData = await talkRes.json();
+                    messageHistory = talkData.data || [];
+                }
+
+                // 날짜 역순 정렬
+                bookingHistory.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+                messageHistory.sort((a, b) => (b.sentAt || '').localeCompare(a.sentAt || ''));
+
+            } catch (e) {
+                console.error('내역 로드 실패:', e);
+            }
+
+            // 상세 정보 HTML 생성 (Simple 버전)
+            let html = `
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- 기본 정보 -->
+                    <div style="background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                        <h4 style="margin: 0 0 12px 0; color: #667eea; display: flex; align-items: center; gap: 6px;">
+                            � 기본 정보
+                        </h4>
+                        <div style="font-size: 14px; line-height: 1.8;">
+                            <div><strong>이름:</strong> ${patient.name}</div>
+                            <div><strong>차트번호:</strong> ${patient.chartNo} <span style="color: #6b7280; font-size: 13px;">(${patient.birthGender || '-'})</span></div>
+                            <div><strong>전화번호:</strong> ${patient.phone || '-'}</div>
+                            <div><strong>주소:</strong> ${patient.address || '(미등록)'}</div>
+                            <div><strong>등록일:</strong> ${patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('ko-KR') : '-'}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 예약 내역 -->
+                    <div style="background: #f0f9ff; padding: 15px; border-radius: 10px; border: 1px solid #bae6fd;">
+                        <h4 style="margin: 0 0 12px 0; color: #0284c7; display: flex; align-items: center; gap: 6px;">
+                            📅 내원/예약 현황 (${bookingHistory.length}건)
+                        </h4>
+                        <div style="max-height: 200px; overflow-y: auto; font-size: 13px;">
+                            ${bookingHistory.length > 0 ? bookingHistory.map(b => {
+                let statusColor = '#667eea';
+                if (b.status === '내원완료') statusColor = '#10b981';
+                else if (b.status === '취소' || b.status === '노쇼') statusColor = '#ef4444';
+
+                return `
+                                    <div style="padding: 8px 0; border-bottom: 1px solid #e0f2fe; display: flex; justify-content: space-between;">
+                                        <div>
+                                            <span style="font-weight: 600; color: #0c4a6e; margin-right: 8px;">${b.date}</span>
+                                            <span style="background: ${statusColor}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px;">${b.status}</span>
+                                        </div>
+                                        <span style="color: #64748b;">${b.time}</span>
+                                    </div>
+                                `;
+            }).join('') : '<p style="color: #94a3b8; padding: 10px 0;">기록이 없습니다.</p>'}
+                        </div>
+                    </div>
+                    
+                    <!-- 알림톡/문자 발송 내역 -->
+                    <div style="background: #fdf4ff; padding: 15px; border-radius: 10px; border: 1px solid #f5d0fe;">
+                        <h4 style="margin: 0 0 12px 0; color: #a21caf; display: flex; align-items: center; gap: 6px;">
+                            💬 메시지 발송 이력 (${messageHistory.length}건)
+                        </h4>
+                        <div style="max-height: 200px; overflow-y: auto; font-size: 13px;">
+                            ${messageHistory.length > 0 ? messageHistory.map(m => `
+                                <div style="padding: 8px 0; border-bottom: 1px solid #fae8ff; display: flex; justify-content: space-between;">
+                                    <div>
+                                        <span style="font-weight: 600; color: #701a75; margin-right: 8px;">${new Date(m.sentAt).toLocaleDateString('ko-KR')}</span>
+                                        <span style="color: #666;">${m.templateName || m.title || '알림톡'}</span>
+                                    </div>
+                                    <span style="font-size: 11px; color: ${m.status === 'success' ? '#10b981' : '#ef4444'};">
+                                        ${m.status === 'success' ? '성공' : '실패'}
+                                    </span>
+                                </div>
+                            `).join('') : '<p style="color: #94a3b8; padding: 10px 0;">발송 이력이 없습니다.</p>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            content.innerHTML = html;
+        }
+
+        // 환자 이미지 폴더 열기
+        async function openPatientImageFolder(patientId) {
+            try {
+                const response = await fetch('/api/patient-images/' + patientId + '/open-folder', { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                    if (result.networkPath) {
+                        navigator.clipboard.writeText(result.networkPath).catch(() => { });
+                    }
+                    alert('📂 폴더가 열렸습니다.\n(열리지 않을 경우 클립보드에 복사된 경로를 사용하세요)');
+                } else {
+                    alert(result.message || '폴더를 열 수 없습니다');
+                }
+            } catch (error) {
+                console.error('폴더 열기 실패:', error);
+                alert('폴더를 열 수 없습니다');
+            }
+        }
+
+        // ===========================================
+        // 이미지 등록 관련 함수
+        // ===========================================
+
+        let selectedImagePatient = null;
+        let selectedFile = null;
+        let imageSearchResults = [];
+        let selectedImageIdx = -1;
+
+        // 환자 검색 (이미지용)
+        function searchImagePatient() {
+            const query = document.getElementById('image-patient-search').value.trim().toLowerCase();
+            const dropdown = document.getElementById('image-patient-dropdown');
+
+            if (!query || query.length < 1) {
+                dropdown.style.display = 'none';
+                imageSearchResults = [];
+                selectedImageIdx = -1;
+                return;
+            }
+
+            imageSearchResults = allPatients.filter(p =>
+                (p.name && p.name.toLowerCase().includes(query)) ||
+                (p.chartNo && p.chartNo.toLowerCase().includes(query))
+            ).slice(0, 10);
+
+            if (imageSearchResults.length === 0) {
+                dropdown.innerHTML = '<div style="padding: 12px; text-align: center; color: #9ca3af;">검색 결과 없음</div>';
+                selectedImageIdx = -1;
+            } else {
+                selectedImageIdx = 0;
+                renderImageDropdown();
+            }
+
+            dropdown.style.display = 'block';
+        }
+
+        function renderImageDropdown() {
+            const dropdown = document.getElementById('image-patient-dropdown');
+            dropdown.innerHTML = imageSearchResults.map((p, idx) => `
+                <div style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f3f4f6; background: ${idx === selectedImageIdx ? '#f0f4ff' : 'white'};"
+                    onmouseover="this.style.background='#f9fafb'"
+                    onmouseout="this.style.background='${idx === selectedImageIdx ? '#f0f4ff' : 'white'}'"
+                    onclick="selectImagePatient(${p.id}, '${p.name}', '${p.chartNo || ''}')">
+                    <strong>${p.name}</strong> <span style="color: #6b7280;">(${p.chartNo || '-'})</span>
+                </div>
+            `).join('');
+
+            // 활성 항목 스크롤
+            const items = dropdown.querySelectorAll('div[onclick]');
+            if (items[selectedImageIdx]) items[selectedImageIdx].scrollIntoView({ block: 'nearest' });
+        }
+
+        function onImageSearchKeyDown(e) {
+            if (!imageSearchResults.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedImageIdx = (selectedImageIdx + 1) % imageSearchResults.length;
+                renderImageDropdown();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedImageIdx = (selectedImageIdx - 1 + imageSearchResults.length) % imageSearchResults.length;
+                renderImageDropdown();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedImageIdx >= 0 && imageSearchResults[selectedImageIdx]) {
+                    const p = imageSearchResults[selectedImageIdx];
+                    selectImagePatient(p.id, p.name, p.chartNo || '');
+                }
+            } else if (e.key === 'Escape') {
+                document.getElementById('image-patient-dropdown').style.display = 'none';
+            }
+        }
+
+        // 환자 선택 (이미지용)
+        function selectImagePatient(id, name, chartNo) {
+            selectedImagePatient = { id, name, chartNo };
+            const folderName = name + '(' + chartNo + ')';
+
+            document.getElementById('image-patient-search').value = name + ' (' + chartNo + ')';
+            document.getElementById('image-patient-dropdown').style.display = 'none';
+            document.getElementById('selected-patient-info').style.display = 'block';
+            document.getElementById('selected-patient-name').textContent = name + ' (' + chartNo + ')';
+
+            imageSearchResults = [];
+            selectedImageIdx = -1;
+
+            // 파일 목록 로드
+            loadPatientFiles(folderName);
+        }
+
+        // 환자 폴더 파일 목록 로드
+        async function loadPatientFiles(folderName) {
+            const container = document.getElementById('patient-files-list');
+            container.innerHTML = '<p style="text-align: center; color: #9ca3af; padding: 15px; font-size: 13px;">로딩 중...</p>';
+
+            try {
+                const response = await fetch('/api/patient-images/' + encodeURIComponent(folderName));
+                const data = await response.json();
+
+                if (!data.success) {
+                    container.innerHTML = '<p style="text-align: center; color: #ef4444; padding: 15px; font-size: 13px;">오류 발생</p>';
+                    return;
+                }
+
+                if (!data.exists || data.files.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #9ca3af; padding: 15px; font-size: 13px;">저장된 파일 없음</p>';
+                    return;
+                }
+
+                container.innerHTML = data.files.map(f => `
+                < div style = "padding: 10px 12px; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;"
+            onmouseover = "this.style.background='#f9fafb'" onmouseout = "this.style.background='white'" >
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📄 ${f.name}</div>
+                            <div style="font-size: 11px; color: #9ca3af;">${f.date}</div>
+                        </div>
+                        <div style="display: flex; gap: 5px; flex-shrink: 0;">
+                            <button onclick="downloadPatientImage('${encodeURIComponent(folderName)}', '${encodeURIComponent(f.name)}')" 
+                                    style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer;">
+                                ⬇️
+                            </button>
+                            <button onclick="deletePatientImage('${encodeURIComponent(folderName)}', '${f.name}')" 
+                                    style="padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer;">
+                                🗑️
+                            </button>
+                        </div>
+                    </div >
+                `).join('');
+            } catch (error) {
+                container.innerHTML = '<p style="text-align: center; color: #ef4444; padding: 15px; font-size: 13px;">로드 실패</p>';
+            }
+        }
+
+        // 환자 이미지 다운로드
+        function downloadPatientImage(folderName, filename) {
+            window.location.href = '/api/patient-images/' + folderName + '/download/' + filename;
+        }
+
+        // 환자 이미지 삭제
+        async function deletePatientImage(folderName, filename) {
+            if (!confirm('파일을 삭제하시겠습니까?\n' + decodeURIComponent(filename))) return;
+
+            try {
+                const response = await fetch('/api/patient-images/' + folderName + '/' + encodeURIComponent(filename), {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ 파일이 삭제되었습니다.');
+                    loadPatientFiles(decodeURIComponent(folderName));
+                } else {
+                    alert('❌ 삭제 실패: ' + data.message);
+                }
+            } catch (error) {
+                alert('❌ 삭제 중 오류 발생');
+            }
+        }
+
+        // 환자 이미지 폴더 열기 (Top-Right Section)
+        async function openPatientFolder() {
+            if (!selectedImagePatient) {
+                alert('환자를 먼저 선택해주세요.');
+                return;
+            }
+
+            const folderName = selectedImagePatient.name + '(' + selectedImagePatient.chartNo + ')';
+
+            try {
+                // Use open-folder (by folderName)
+                const response = await fetch('/api/patient-images/open-folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folderName })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    // Try to copy to clipboard regardless, as a fallback/utility
+                    if (data.networkPath) {
+                        navigator.clipboard.writeText(data.networkPath).catch(() => { });
+                    }
+                    alert('📂 폴더가 열렸습니다.\n(열리지 않을 경우 클립보드에 복사된 경로를 사용하세요)');
+                } else {
+                    alert('폴더 열기 실패: ' + data.message);
+                }
+            } catch (error) {
+                alert('폴더 열기 중 오류 발생');
+            }
+        }
+
+        // 키워드 select 변경 감지
+        document.addEventListener('DOMContentLoaded', function () {
+            const keywordSelect = document.getElementById('image-keyword');
+            const customInput = document.getElementById('image-keyword-custom');
+
+            if (keywordSelect) {
+                keywordSelect.addEventListener('change', function () {
+                    if (this.value === '기타') {
+                        customInput.style.display = 'block';
+                        customInput.focus();
+                    } else {
+                        customInput.style.display = 'none';
+                        customInput.value = '';
+                    }
+                });
+            }
+        });
+
+        // 드래그앤드롭 처리
+        function handleDrop(event) {
+            event.preventDefault();
+            const dropZone = document.getElementById('drop-zone');
+            dropZone.style.borderColor = '#d1d5db';
+            dropZone.style.background = 'white';
+
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                selectedFile = files[0];
+                showSelectedFile(selectedFile);
+            }
+        }
+
+        // ========== 다중 파일 업로드 ==========
+        let pendingFiles = []; // 업로드 대기 파일 목록
+
+        // 다중 드래그앤드롭 처리
+        function handleMultiDrop(event) {
+            event.preventDefault();
+            const dropZone = document.getElementById('drop-zone');
+            dropZone.style.borderColor = '#d1d5db';
+            dropZone.style.background = 'white';
+
+            const files = event.dataTransfer.files;
+            addPendingFiles(files);
+        }
+
+        // 다중 파일 선택 처리
+        function handleMultiFileSelect(event) {
+            const files = event.target.files;
+            addPendingFiles(files);
+        }
+
+        // 대기 파일 추가
+        function addPendingFiles(files) {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                // 중복 체크
+                if (!pendingFiles.some(f => f.file.name === file.name)) {
+                    pendingFiles.push({ file: file, description: '' });
+                }
+            }
+            renderPendingFiles();
+        }
+
+        // 대기 파일 목록 렌더링
+        function renderPendingFiles() {
+            const container = document.getElementById('pending-files-container');
+            const listWrapper = document.getElementById('pending-files-list');
+
+            if (pendingFiles.length === 0) {
+                listWrapper.style.display = 'none';
+                return;
+            }
+
+            listWrapper.style.display = 'block';
+            container.innerHTML = pendingFiles.map((item, idx) => `
+                <div style="padding: 12px; border-bottom: 1px solid #e5e7eb; background: ${idx % 2 === 0 ? 'white' : '#fafafa'};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div style="flex: 1; min-width: 0;">
+                            <span style="font-weight: 500; font-size: 13px;">📄 ${item.file.name}</span>
+                            <span style="color: #9ca3af; font-size: 11px; margin-left: 8px;">${(item.file.size / 1024).toFixed(1)} KB</span>
+                        </div>
+                        <button onclick="removePendingFile(${idx})" 
+                                style="padding: 4px 8px; background: #fee2e2; color: #dc2626; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                            ❌
+                        </button>
+                    </div>
+                    <input type="text" placeholder="설명 입력 (파일명에 추가됨)" 
+                           value="${item.description}"
+                           onchange="updatePendingDescription(${idx}, this.value)"
+                           style="width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px;">
+                </div>
+            `).join('');
+        }
+
+        // 대기 파일 제거
+        function removePendingFile(idx) {
+            pendingFiles.splice(idx, 1);
+            renderPendingFiles();
+        }
+
+        // 대기 파일 설명 업데이트
+        function updatePendingDescription(idx, value) {
+            pendingFiles[idx].description = value;
+        }
+
+        // 다중 이미지 업로드
+        async function uploadMultiplePatientImages() {
+            if (!selectedImagePatient) {
+                alert('환자를 먼저 선택해주세요.');
+                return;
+            }
+
+            if (pendingFiles.length === 0) {
+                alert('파일을 선택해주세요.');
+                return;
+            }
+
+            const keywordSelect = document.getElementById('image-keyword');
+            const customInput = document.getElementById('image-keyword-custom');
+
+            let keyword = keywordSelect.value;
+            if (keyword === '기타' && customInput.value.trim()) {
+                keyword = customInput.value.trim();
+            }
+
+            const folderName = selectedImagePatient.name + '(' + selectedImagePatient.chartNo + ')';
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const item of pendingFiles) {
+                const formData = new FormData();
+                formData.append('file', item.file);
+                formData.append('folderName', folderName);
+                formData.append('keyword', keyword);
+                formData.append('description', item.description);
+
+                try {
+                    const response = await fetch('/api/patient-images/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                        console.error('업로드 실패:', item.file.name, data.message);
+                    }
+                } catch (error) {
+                    failCount++;
+                    console.error('업로드 오류:', item.file.name, error);
+                }
+            }
+
+            // 결과 알림
+            if (successCount > 0) {
+                alert(`✅ ${successCount}개 파일 업로드 성공!${failCount > 0 ? ` (실패: ${failCount}개)` : ''}`);
+            } else {
+                alert('❌ 모든 파일 업로드 실패');
+            }
+
+            // 초기화
+            pendingFiles = [];
+            renderPendingFiles();
+            document.getElementById('image-file-input').value = '';
+
+            // 파일 목록 새로고침
+            loadPatientFiles(folderName);
+        }
+
+        // ===========================================
+        // 환자 수정/삭제 관련 함수
+        // ===========================================
+
+        let editingPatientId = null;
+
+        // 환자 수정 모달 표시
+        function showEditPatientModal(id, name, chartNo, phone, address, birthGender) {
+            editingPatientId = id;
+
+            // 모달이 없으면 생성
+            let modal = document.getElementById('edit-patient-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'edit-patient-modal';
+                modal.style.cssText = 'display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;';
+                modal.innerHTML = `
+                    <div style="background: white; padding: 30px; border-radius: 14px; width: 90%; max-width: 400px;">
+                        <h3 style="margin: 0 0 20px 0; color: #2c3e50;">✏️ 환자 정보 수정</h3>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">환자명</label>
+                            <input type="text" id="edit-patient-name" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">차트번호</label>
+                            <input type="text" id="edit-patient-chart" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                            <div style="flex: 1;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 5px;">전화번호</label>
+                                <input type="text" id="edit-patient-phone" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;" maxlength="13" oninput="formatPhoneNumber(this)">
+                            </div>
+                            <div style="width: 120px;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 5px;">생년월일-성별</label>
+                                <input type="text" id="edit-patient-birthgender" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;" maxlength="8" placeholder="990101-1" oninput="formatBirthGender(this)">
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">주소 <span style="font-weight: normal; color: #9ca3af; font-size: 12px;">(선택)</span></label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="edit-patient-address" style="flex: 1; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; background: #f9fafb;" readonly onclick="openEditAddressSearch()">
+                                <button type="button" onclick="openEditAddressSearch()" style="padding: 10px 12px; background: #e5e7eb; border: none; border-radius: 8px; cursor: pointer;">🔍</button>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <input type="text" id="edit-patient-address-detail" placeholder="상세주소 (동/호수)" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+                        </div>
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button onclick="closeEditPatientModal()" class="btn btn-secondary">취소</button>
+                            <button onclick="savePatientEdit()" class="btn btn-primary">저장</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
+            // 값 설정
+            document.getElementById('edit-patient-name').value = name;
+            document.getElementById('edit-patient-chart').value = chartNo;
+            document.getElementById('edit-patient-phone').value = phone;
+            document.getElementById('edit-patient-address').value = address || '';
+            document.getElementById('edit-patient-address-detail').value = '';
+            document.getElementById('edit-patient-birthgender').value = birthGender || '';
+
+            modal.style.display = 'flex';
+        }
+
+        // 수정 모달용 주소 검색
+        function openEditAddressSearch() {
+            addressTargetInput = 'edit-patient-address';
+            showAddressSearchModal();
+        }
+
+        // 환자 수정 모달 닫기
+        function closeEditPatientModal() {
+            const modal = document.getElementById('edit-patient-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            editingPatientId = null;
+        }
+
+        // 환자 정보 저장
+        async function savePatientEdit() {
+            if (!editingPatientId) return;
+
+            const name = document.getElementById('edit-patient-name').value.trim();
+            const chartNo = document.getElementById('edit-patient-chart').value.trim();
+            const phone = document.getElementById('edit-patient-phone').value.trim();
+            const birthGender = document.getElementById('edit-patient-birthgender').value.trim();
+            const addressBase = document.getElementById('edit-patient-address').value.trim();
+            const addressDetail = document.getElementById('edit-patient-address-detail').value.trim();
+            const address = addressDetail ? (addressBase + ' ' + addressDetail) : addressBase;
+
+            if (!name || !chartNo || !phone) {
+                alert('필수 항목을 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/patients/' + editingPatientId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, chartNo, phone, address, birthGender })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ 환자 정보가 수정되었습니다.');
+                    closeEditPatientModal();
+                    await loadPatients();
+                } else {
+                    alert('❌ 수정 실패: ' + result.message);
+                }
+            } catch (error) {
+                console.error('수정 오류:', error);
+                alert('❌ 수정 중 오류 발생');
+            }
+        }
+
+        // 환자 삭제
+        async function deletePatient(id, name) {
+            if (!confirm('정말 "' + name + '" 환자를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/patients/' + id, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ 환자가 삭제되었습니다.');
+                    await loadPatients();
+                } else {
+                    alert('❌ 삭제 실패: ' + result.message);
+                }
+            } catch (error) {
+                console.error('삭제 오류:', error);
+                alert('❌ 삭제 중 오류 발생');
+            }
+        }
+
+        // 초기화 실행
+        init();
+
+        // ===========================================
+        // 주소 검색 (카카오 로컬 API 대용 VWorld)
+        // ===========================================
+
+        let addressTargetInput = null; // 주소를 입력할 대상 input
+
+        function openAddressSearch(targetInputId) {
+            addressTargetInput = targetInputId || 'patient-address';
+            showAddressSearchModal();
+        }
+
+        function showAddressSearchModal() {
+            // 모달 생성
+            let modal = document.getElementById('address-search-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'address-search-modal';
+                modal.style.cssText = 'display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: flex-start; padding-top: 80px;';
+                modal.innerHTML = `
+                    <div style="background: white; width: 90%; max-width: 500px; max-height: 80vh; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                        <div style="padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; color: #2c3e50;">🔍 주소 검색</h3>
+                            <button onclick="closeAddressSearchModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #9ca3af;">&times;</button>
+                        </div>
+                        <div style="padding: 15px; border-bottom: 1px solid #e5e7eb;">
+                            <input type="text" id="address-search-input" placeholder="동 이름, 도로명, 건물명 검색..." 
+                                style="width: 100%; padding: 12px 15px; border: 2px solid #667eea; border-radius: 10px; font-size: 16px;"
+                                oninput="searchAddress(this.value)" onkeydown="if(event.key==='Enter') searchAddress(this.value)">
+                            <p style="margin: 10px 0 0 0; font-size: 12px; color: #9ca3af;">
+                                💡 예: 신방동, 서북구, 충무로 123
+                            </p>
+                        </div>
+                        <div id="address-search-results" style="max-height: 400px; overflow-y: auto; padding: 10px;">
+                            <p style="text-align: center; color: #9ca3af; padding: 30px;">검색어를 입력하세요</p>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
+            modal.style.display = 'flex';
+            document.getElementById('address-search-input').value = '';
+            document.getElementById('address-search-results').innerHTML = '<p style="text-align: center; color: #9ca3af; padding: 30px;">검색어를 입력하세요</p>';
+            setTimeout(() => {
+                const input = document.getElementById('address-search-input');
+                if (input) input.focus();
+            }, 100);
+        }
+
+        function closeAddressSearchModal() {
+            const modal = document.getElementById('address-search-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        let addressSearchTimeout = null;
+        async function searchAddress(query) {
+            if (addressSearchTimeout) clearTimeout(addressSearchTimeout);
+
+            const resultsDiv = document.getElementById('address-search-results');
+
+            if (!query || query.length < 2) {
+                resultsDiv.innerHTML = '<p style="text-align: center; color: #9ca3af; padding: 30px;">2글자 이상 입력하세요</p>';
+                return;
+            }
+
+            addressSearchTimeout = setTimeout(async () => {
+                resultsDiv.innerHTML = '<p style="text-align: center; color: #9ca3af; padding: 30px;">검색 중...</p>';
+
+                try {
+                    const response = await fetch('/api/address/vworld?query=' + encodeURIComponent(query));
+                    const result = await response.json();
+
+                    if (result.success && result.data && result.data.length > 0) {
+                        let html = '';
+                        result.data.forEach(item => {
+                            const title = item.title || '';
+                            const address = item.address || title;
+                            let icon = '📍';
+                            let tagColor = '#667eea';
+                            let tagName = '주소';
+
+                            if (item.type === 'region') { icon = '🏙️'; tagName = '지역'; tagColor = '#10b981'; }
+                            else if (item.type === 'place') { icon = '🏢'; tagName = '장소'; tagColor = '#f59e0b'; }
+                            else if (item.type === 'road') { icon = '🛣️'; tagName = '도로'; tagColor = '#3b82f6'; }
+
+                            html += `
+                                <div onclick="selectAddress('${address.replace(/'/g, "\\'")}')" 
+                                     style="padding: 15px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: all 0.2s; display: flex; align-items: flex-start; gap: 12px;"
+                                     onmouseover="this.style.background='#f0f9ff'; this.style.transform='translateX(5px)'" 
+                                     onmouseout="this.style.background='white'; this.style.transform='translateX(0)'">
+                                    <span style="font-size: 20px; margin-top: 2px;">${icon}</span>
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-weight: 600; font-size: 15px; color: #1e293b;">${title}</span>
+                                            <span style="background: ${tagColor}; color: white; font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: bold;">${tagName}</span>
+                                        </div>
+                                        <div style="color: #64748b; font-size: 13px; margin-top: 4px; line-height: 1.4;">${address}</div>
+                                    </div>
+                                    <span style="color: #cbd5e1; font-size: 18px; align-self: center;">›</span>
+                                </div>
+                            `;
+                        });
+                        resultsDiv.innerHTML = html;
+                    } else {
+                        resultsDiv.innerHTML = '<p style="text-align: center; color: #9ca3af; padding: 30px;">검색 결과가 없습니다</p>';
+                    }
+                } catch (error) {
+                    console.error('주소 검색 오류:', error);
+                    resultsDiv.innerHTML = '<p style="text-align: center; color: #ef4444; padding: 30px;">검색 오류가 발생했습니다</p>';
+                }
+            }, 300);
+        }
+
+        function selectAddress(address) {
+            const targetInput = document.getElementById(addressTargetInput);
+            if (targetInput) {
+                targetInput.value = address;
+                
+                // 상세주소로 포커스 이동
+                const detailInputId = addressTargetInput === 'edit-patient-address' ? 'edit-patient-address-detail' : 'patient-address-detail';
+                const detailInput = document.getElementById(detailInputId);
+                if (detailInput) {
+                    setTimeout(() => {
+                        detailInput.focus();
+                        detailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
+                }
+            }
+            closeAddressSearchModal();
+        }
+
+        function showFolderHelp() {
+            alert(
+                '📂 폴더 열기 사용법\n\n' +
+                '1️⃣ [폴더 열기] 버튼을 클릭합니다.\n\n' +
+                '2️⃣ 폴더 경로가 복사되었다는 알림이 나옵니다.\n\n' +
+                '3️⃣ 파일 탐색기를 엽니다. (Win+E 또는 바탕화면 폴더 아이콘)\n\n' +
+                '4️⃣ 상단 주소창을 클릭한 후 Ctrl+V로 붙여넣기 합니다.\n\n' +
+                '5️⃣ Enter를 누르면 공유 폴더가 열립니다!'
+            );
+        }
+    </script>
+</body>
+
+</html>

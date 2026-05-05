@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>컴퓨터 등록 - 신방한의원 OS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 18px;
+            text-align: center;
+            letter-spacing: 2px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .error {
+            color: #e74c3c;
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .help {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #999;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="logo">🏥</div>
+        <h1>신방한의원 OS</h1>
+        <p class="subtitle">이 컴퓨터를 등록해주세요</p>
+
+        <div class="input-group">
+            <label></label>
+            <input type="text" id="register-code" placeholder="admin-xxxx-xxxx" autocomplete="off">
+        </div>
+
+        <button class="btn" onclick="registerComputer()">등록하기</button>
+
+        <p class="error" id="error-msg"></p>
+
+        <p class="help">
+            관리자에게 를 받으세요.<br>
+            한 번 등록하면 다시 입력할 필요 없습니다.
+        </p>
+    </div>
+
+    <script>
+        // 이미 등록된 경우 메인으로 이동
+        const savedKey = localStorage.getItem('sinbang-computer-key');
+        if (savedKey) {
+            verifyAndRedirect(savedKey);
+        }
+
+        async function verifyAndRedirect(key) {
+            try {
+                const response = await fetch('/api/computer/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    // 권한 정보도 저장
+                    localStorage.setItem('sinbang-computer-info', JSON.stringify(result.computer));
+                    localStorage.setItem('sinbang-allowed-menus', JSON.stringify(result.allowedMenus));
+                    window.location.href = '/index.html';
+                }
+            } catch (e) {
+                console.error('Verification failed:', e);
+            }
+        }
+
+        async function registerComputer() {
+            const code = document.getElementById('register-code').value.trim();
+            const errorMsg = document.getElementById('error-msg');
+            const btn = document.querySelector('.btn');
+
+            if (!code) {
+                errorMsg.textContent = '를 입력하세요';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '확인 중...';
+            errorMsg.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/computer/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: code })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    // 로컬 스토리지에 저장
+                    localStorage.setItem('sinbang-computer-key', code);
+                    localStorage.setItem('sinbang-computer-info', JSON.stringify(result.computer));
+                    localStorage.setItem('sinbang-allowed-menus', JSON.stringify(result.allowedMenus));
+
+                    btn.textContent = '등록 완료!';
+                    setTimeout(() => {
+                        window.location.href = '/index.html';
+                    }, 500);
+                } else {
+                    errorMsg.textContent = result.message || '유효하지 않은 코드입니다';
+                    errorMsg.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = '등록하기';
+                }
+            } catch (error) {
+                errorMsg.textContent = '서버 연결 실패';
+                errorMsg.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = '등록하기';
+            }
+        }
+
+        // Enter 키 처리
+        document.getElementById('register-code').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                registerComputer();
+            }
+        });
+    </script>
+</body>
+
+</html>

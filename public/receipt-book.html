@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>일일 매출 현황 - 신방한의원 OS</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            padding: 40px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--text-main);
+            padding-bottom: 20px;
+        }
+
+        .title-area h1 {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 5px;
+        }
+
+        .date-picker-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .date-input {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        th {
+            background: #f1f5f9;
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+            border: 1px solid var(--border);
+        }
+
+        td {
+            padding: 4px 6px;
+            border: 1px solid var(--border);
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+
+        .input-inline {
+            width: 100%;
+            border: none;
+            background: transparent;
+            padding: 5px;
+            font-size: 14px;
+            text-align: inherit;
+        }
+        .input-inline:focus {
+            background: #f0f9ff;
+            outline: none;
+        }
+
+        .btn-type {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: #fff;
+        }
+        .btn-type.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* 통계 섹션 */
+        .summary-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid var(--border);
+        }
+
+        .stat-group h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .stat-table td {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+        }
+        .stat-label { background: #f8fafc; font-weight: 600; width: 120px; }
+
+        .total-highlight {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .expense-list {
+            margin-bottom: 10px;
+        }
+        .expense-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .btn-add-expense {
+            padding: 5px 10px;
+            background: #f1f5f9;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .actions {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-action {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .btn-save { background: var(--primary); color: white; }
+        .btn-print { background: #1e293b; color: white; }
+
+        @media print {
+            body { padding: 0; background: white; }
+            .container { box-shadow: none; padding: 0; max-width: none; width: 100%; }
+            .actions, .btn-add-expense, .delete-btn, .delete-btn-col { display: none; }
+            .date-input { border: none; font-size: 16px; font-weight: 700; color: #000; }
+            header { margin-bottom: 20px; padding-bottom: 10px; }
+            .title-area h1 { font-size: 20px !important; margin-bottom: 0; }
+            
+            /* 수납 구분 인쇄 스타일 */
+            .btn-type { display: none !important; }
+            .btn-type.active { 
+                display: inline !important; 
+                border: none !important; 
+                padding: 0 !important; 
+                background: transparent !important; 
+                color: black !important;
+                font-weight: 600 !important;
+                font-size: 13px !important;
+                margin-right: 5px;
+            }
+            /* 쉼표 구분자 추가 (선택 사항) */
+            .btn-type.active + .btn-type.active:before {
+                content: ", ";
+            }
+        }
+
+        .delete-btn {
+            color: #ef4444;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="title-area">
+                <h1>일일 매출 현황</h1>
+                <div class="date-picker-area">
+                    <input type="date" id="target-date" class="date-input" onchange="loadData()">
+                </div>
+            </div>
+            <div class="text-right">
+            </div>
+        </header>
+
+        <table id="receipt-table">
+            <thead>
+                <tr>
+                    <th style="width: 100px;">구분</th>
+                    <th style="width: 120px; text-align: left; padding-left: 10px;">성명</th>
+                    <th>시술내용</th>
+                    <th style="width: 120px;">현금</th>
+                    <th style="width: 120px;">카드</th>
+                    <th style="width: 120px;">카드명</th>
+                    <th style="width: 40px;" class="delete-btn-col"></th>
+                </tr>
+            </thead>
+            <tbody id="receipt-list">
+                <!-- 수납 내역 로드됨 -->
+            </tbody>
+            <tfoot>
+                <tr style="background: #f8fafc; font-weight: 800;">
+                    <td colspan="3" class="text-center">합 계</td>
+                    <td id="total-cash" class="text-right">0</td>
+                    <td id="total-card" class="text-right">0</td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="summary-section">
+            <!-- 지출 내역 -->
+            <div class="stat-group">
+                <h3>지출 내역</h3>
+                <div id="expense-list" class="expense-list">
+                    <!-- 지출 내역 로드됨 -->
+                </div>
+                <button class="btn-add-expense" onclick="addExpenseRow()">+ 지출 항목 추가</button>
+                
+                <table class="stat-table" style="margin-top: 20px;">
+                    <tr>
+                        <td class="stat-label">지출 합계</td>
+                        <td id="total-expense" class="text-right">0</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- 일일 결산 -->
+            <div class="stat-group">
+                <h3>일일 결산 요약</h3>
+                <table class="stat-table">
+                    <tr>
+                        <td class="stat-label">환자 총수</td>
+                        <td id="sum-patients" class="text-right">0명</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">현금 수납</td>
+                        <td id="sum-cash-count" class="text-right">0건</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">카드 수납</td>
+                        <td id="sum-card-count" class="text-right">0건</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">수입 총계</td>
+                        <td id="sum-total-revenue" class="text-right" style="font-weight: 800;">0</td>
+                    </tr>
+                    <tr style="background: #f0fdf4;">
+                        <td class="stat-label" style="color: #166534;">금일 수익</td>
+                        <td id="sum-daily-profit" class="text-right total-highlight">0</td>
+                    </tr>
+                </table>
+                
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn-action btn-print" onclick="window.print()">인쇄하기</button>
+        <button class="btn-action btn-save" onclick="saveAll()">전체 저장</button>
+    </div>
+
+    <script>
+        let receipts = [];
+        let expenses = [];
+        let visitingPatients = [];
+
+        // 초기화: 오늘 날짜 설정
+        window.onload = () => {
+            const kstToday = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+            document.getElementById('target-date').value = kstToday;
+            loadData();
+        };
+
+        async function loadData() {
+            const date = document.getElementById('target-date').value;
+            if (!date) return;
+
+            try {
+                // 1. 내원 환자 목록 가져오기 (매칭용)
+                const visitRes = await fetch('/api/today-visits?date=' + date);
+                const visitResult = await visitRes.json();
+                visitingPatients = visitResult.success ? visitResult.data : [];
+
+                // 2. 수납 내역 가져오기
+                const receiptRes = await fetch('/api/receipt-book/receipts?date=' + date);
+                const receiptResult = await receiptRes.json();
+                receipts = receiptResult.success ? receiptResult.data : [];
+
+                // 3. 지출 내역 가져오기
+                const expenseRes = await fetch('/api/receipt-book/expenses?date=' + date);
+                const expenseResult = await expenseRes.json();
+                expenses = expenseResult.success ? expenseResult.data : [];
+
+                renderReceipts();
+                renderExpenses();
+                updateSummary();
+            } catch (error) {
+                console.error('데이터 로드 실패:', error);
+            }
+        }
+
+        function renderReceipts() {
+            const container = document.getElementById('receipt-list');
+            
+            // 내원 환자 중 아직 수납 내역이 없는 환자들을 리스트에 추가 (내원 데이터 기반 자동 행 생성)
+            visitingPatients.forEach(v => {
+                const exists = receipts.find(r => String(r.visitId) === String(v.id));
+                if (!exists) {
+                    receipts.push({
+                        visitId: v.id,
+                        patientId: v.patientId,
+                        patientName: v.patientName,
+                        chartNo: v.chartNo,
+                        type: '',
+                        procedureDetails: '',
+                        cashAmount: 0,
+                        cardAmount: 0,
+                        cardName: '',
+                        isNew: true
+                    });
+                }
+            });
+
+            // 내원 시간순(ID순) 정렬
+            receipts.sort((a, b) => (Number(a.visitId) || 0) - (Number(b.visitId) || 0));
+
+            container.innerHTML = receipts.map((r, idx) => `
+                <tr data-idx="${idx}" data-id="${r.id || ''}" data-visit-id="${r.visitId || ''}">
+                    <td class="text-center">
+                        <div class="type-btn-group" style="display:flex; gap:2px; justify-content:center;">
+                            ${['건보', '자보', '급여', '한약(비급여)'].map(t => `
+                                <button class="btn-type ${(r.type || '').split(',').includes(t) ? 'active' : ''}" onclick="setType(this, '${t}')">${t.replace('(비급여)', '')}</button>
+                            `).join('')}
+                        </div>
+                    </td>
+                    <td style="white-space: nowrap; padding-left: 10px;">
+                        <span style="font-weight: 700;">${r.patientName}</span>
+                        <span style="font-size: 11px; color: #94a3b8; margin-left: 4px;">(${r.chartNo || '-'})</span>
+                    </td>
+                    <td><input type="text" class="input-inline" value="${r.procedureDetails || ''}" onchange="updateReceiptValue(${idx}, 'procedureDetails', this.value)"></td>
+                    <td class="text-right"><input type="text" class="input-inline text-right amount-input" value="${(r.cashAmount || 0).toLocaleString()}" onchange="updateReceiptAmount(${idx}, 'cashAmount', this.value)"></td>
+                    <td class="text-right"><input type="text" class="input-inline text-right amount-input" value="${(r.cardAmount || 0).toLocaleString()}" onchange="updateReceiptAmount(${idx}, 'cardAmount', this.value)"></td>
+                    <td><input type="text" class="input-inline" value="${r.cardName || ''}" onchange="updateReceiptValue(${idx}, 'cardName', this.value)"></td>
+                    <td class="text-center"><span class="delete-btn" onclick="deleteReceipt(${r.id}, ${idx})">✕</span></td>
+                </tr>
+            `).join('');
+
+            // 금액 입력 포맷팅 이벤트 재등록
+            registerAmountEvents();
+        }
+
+        function renderExpenses() {
+            const container = document.getElementById('expense-list');
+            container.innerHTML = expenses.map((e, idx) => `
+                <div class="expense-item" data-id="${e.id || ''}">
+                    <input type="text" class="form-input" style="flex: 2;" value="${e.description || ''}" placeholder="지출 내용" onchange="updateExpenseValue(${idx}, 'description', this.value)">
+                    <input type="text" class="form-input text-right amount-input" style="flex: 1;" value="${(e.amount || 0).toLocaleString()}" placeholder="금액" onchange="updateExpenseAmount(${idx}, 'amount', this.value)">
+                    <button class="delete-btn" style="border:none; background:none;" onclick="deleteExpense(${e.id}, ${idx})">✕</button>
+                </div>
+            `).join('');
+            
+            registerAmountEvents();
+        }
+
+        function setType(btn, type) {
+            const tr = btn.closest('tr');
+            const idx = tr.dataset.idx;
+            
+            let selectedTypes = (receipts[idx].type || '').split(',').filter(t => t);
+            if (selectedTypes.includes(type)) {
+                selectedTypes = selectedTypes.filter(t => t !== type);
+                btn.classList.remove('active');
+            } else {
+                selectedTypes.push(type);
+                btn.classList.add('active');
+            }
+            receipts[idx].type = selectedTypes.join(',');
+        }
+
+        function updateReceiptValue(idx, field, value) {
+            receipts[idx][field] = value;
+        }
+
+        function updateReceiptAmount(idx, field, value) {
+            receipts[idx][field] = parseInt(value.replace(/,/g, '')) || 0;
+            updateSummary();
+        }
+
+        function updateExpenseValue(idx, field, value) {
+            expenses[idx][field] = value;
+        }
+
+        function updateExpenseAmount(idx, field, value) {
+            expenses[idx][field] = parseInt(value.replace(/,/g, '')) || 0;
+            updateSummary();
+        }
+
+        function addExpenseRow() {
+            expenses.push({ description: '', amount: 0, date: document.getElementById('target-date').value });
+            renderExpenses();
+        }
+
+        function updateSummary() {
+            const targetDate = document.getElementById('target-date').value;
+
+            const cashTotal = receipts.reduce((sum, r) => sum + (parseInt(r.cashAmount) || 0), 0);
+            const cardTotal = receipts.reduce((sum, r) => sum + (parseInt(r.cardAmount) || 0), 0);
+            const expenseTotal = expenses.reduce((sum, e) => sum + (parseInt(e.amount) || 0), 0);
+            
+            const cashCount = receipts.filter(r => (parseInt(r.cashAmount) || 0) > 0).length;
+            const cardCount = receipts.filter(r => (parseInt(r.cardAmount) || 0) > 0).length;
+
+            document.getElementById('total-cash').textContent = cashTotal.toLocaleString();
+            document.getElementById('total-card').textContent = cardTotal.toLocaleString();
+            document.getElementById('total-expense').textContent = expenseTotal.toLocaleString();
+
+            document.getElementById('sum-patients').textContent = receipts.length + '명';
+            document.getElementById('sum-cash-count').textContent = cashCount + '건';
+            document.getElementById('sum-card-count').textContent = cardCount + '건';
+            document.getElementById('sum-total-revenue').textContent = (cashTotal + cardTotal).toLocaleString();
+            document.getElementById('sum-daily-profit').textContent = (cashTotal + cardTotal - expenseTotal).toLocaleString();
+        }
+
+        function registerAmountEvents() {
+            document.querySelectorAll('.amount-input').forEach(input => {
+                input.oninput = (e) => {
+                    let val = e.target.value.replace(/[^0-9]/g, '');
+                    e.target.value = val ? parseInt(val).toLocaleString() : '';
+                };
+            });
+        }
+
+        async function deleteReceipt(id, idx) {
+            if (!id) {
+                receipts.splice(idx, 1);
+                renderReceipts();
+                updateSummary();
+                return;
+            }
+            if (!confirm('수납 내역을 삭제하시겠습니까?')) return;
+            try {
+                await fetch('/api/receipt-book/receipts/' + id, { method: 'DELETE' });
+                receipts = receipts.filter(r => r.id !== id);
+                renderReceipts();
+                updateSummary();
+            } catch (e) { alert('삭제 실패'); }
+        }
+
+        async function deleteExpense(id, idx) {
+            if (!id) {
+                expenses.splice(idx, 1);
+                renderExpenses();
+                updateSummary();
+                return;
+            }
+            if (!confirm('지출 내역을 삭제하시겠습니까?')) return;
+            try {
+                await fetch('/api/receipt-book/expenses/' + id, { method: 'DELETE' });
+                expenses = expenses.filter(e => e.id !== id);
+                renderExpenses();
+                updateSummary();
+            } catch (e) { alert('삭제 실패'); }
+        }
+
+        async function saveAll() {
+            const date = document.getElementById('target-date').value;
+            
+            try {
+                // 1. 수납 저장 (수정/신규 일괄 처리)
+                for (const r of receipts) {
+                    if (!r.type && !r.procedureDetails && !r.cashAmount && !r.cardAmount) continue; // 빈 행 건너뜀
+                    await fetch('/api/receipt-book/receipts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...r, date })
+                    });
+                }
+
+                // 2. 지출 저장
+                for (const e of expenses) {
+                    if (!e.description && !e.amount) continue;
+                    await fetch('/api/receipt-book/expenses', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...e, date })
+                    });
+                }
+
+                alert('모든 변경사항이 저장되었습니다.');
+                loadData(); // 데이터 새로고침
+            } catch (error) {
+                console.error(error);
+                alert('저장 중 오류가 발생했습니다.');
+            }
+        }
+    </script>
+</body>
+</html>

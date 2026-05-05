@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>환자 엑셀 업로드 - 신방한의원 OS</title>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --danger: #ef4444;
+            --gray: #9ca3af;
+            --bg: #f5f7fa;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Malgun Gothic', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: #2c3e50;
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header p {
+            color: var(--gray);
+            margin-top: 8px;
+        }
+
+        /* Upload Card */
+        .upload-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            border: 2px dashed #e2e8f0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-card:hover,
+        .upload-card.drag-over {
+            border-color: var(--primary);
+            background: rgba(102, 126, 234, 0.02);
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .upload-text h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text p {
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* Format Info */
+        .format-info {
+            margin-top: 30px;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: left;
+        }
+
+        .format-info h4 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .format-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .format-item {
+            font-size: 13px;
+            color: #4b5563;
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .format-item span {
+            font-weight: 700;
+            color: var(--primary);
+            margin-right: 5px;
+        }
+
+        /* Progress & Results */
+        .result-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .progress-bar-container {
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .stat-card {
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+        }
+
+        .stat-card.total {
+            background: #4b5563;
+        }
+
+        .stat-card.success {
+            background: var(--success);
+        }
+
+        .stat-card.duplicate {
+            background: #f59e0b;
+        }
+
+        .stat-card h2 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .btn {
+            margin-top: 25px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            background: var(--gray);
+            cursor: not-allowed;
+        }
+
+        #error-log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fef2f2;
+            border-radius: 8px;
+            border: 1px solid #fecaca;
+            color: var(--danger);
+            font-size: 13px;
+            display: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📂 OK차트 엑셀 파일 업로드</h1>
+            <p>엑셀 파일을 업로드하여 환자 명단을 대량으로 등록합니다. 중복 데이터는 자동으로 제외됩니다.</p>
+        </div>
+
+        <div class="upload-card" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <div class="upload-icon">📄</div>
+            <div class="upload-text">
+                <h3>클릭하거나 파일을 여기로 드래그하세요</h3>
+                <p>지원 형식: .xls, .xlsx</p>
+                <p id="selected-file-name" style="margin-top: 10px; font-weight: bold; color: var(--primary);"></p>
+            </div>
+            <input type="file" id="file-input" accept=".xls,.xlsx">
+        </div>
+
+
+
+        <div style="text-align: center;">
+            <button class="btn" id="upload-btn" disabled onclick="startUpload()">업로드 시작</button>
+        </div>
+
+        <div class="result-section" id="result-section">
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card total">
+                    <h2 id="stat-total">0</h2>
+                    <p>총 데이터</p>
+                </div>
+                <div class="stat-card success">
+                    <h2 id="stat-success">0</h2>
+                    <p>신규 등록</p>
+                </div>
+                <div class="stat-card duplicate">
+                    <h2 id="stat-duplicate">0</h2>
+                    <p>중복 제외</p>
+                </div>
+            </div>
+            <div id="error-log"></div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" style="background: var(--bg); color: #2c3e50; border: 1px solid #e2e8f0;"
+                    onclick="resetUpload()">다시 업로드</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileNameDisplay = document.getElementById('selected-file-name');
+        let selectedFile = null;
+
+        // Drag & Drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (['xls', 'xlsx'].includes(ext)) {
+                selectedFile = file;
+                fileNameDisplay.textContent = `선택된 파일: ${file.name}`;
+                uploadBtn.disabled = false;
+            } else {
+                alert('엑셀 파일(.xls, .xlsx)만 업로드 가능합니다.');
+                resetUpload();
+            }
+        }
+
+        async function startUpload() {
+            if (!selectedFile) return;
+
+            uploadBtn.disabled = true;
+            document.getElementById('result-section').style.display = 'block';
+            document.getElementById('progress-bar').style.width = '30%';
+
+            const formData = new FormData();
+            formData.append('excel', selectedFile);
+
+            try {
+                const response = await fetch('/api/patients/upload-excel', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                document.getElementById('progress-bar').style.width = '100%';
+
+                if (result.success) {
+                    document.getElementById('stat-total').textContent = result.totalCount;
+                    document.getElementById('stat-success').textContent = result.successCount;
+                    document.getElementById('stat-duplicate').textContent = result.duplicateCount;
+
+                    if (result.errors && result.errors.length > 0) {
+                        const errorLog = document.getElementById('error-log');
+                        errorLog.style.display = 'block';
+                        errorLog.innerHTML = '<strong>⚠️ 일부 오류 발생:</strong><br>' + result.errors.join('<br>');
+                    }
+                } else {
+                    alert('업로드 실패: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('네트워크 오류가 발생했습니다.');
+            }
+        }
+
+        function resetUpload() {
+            selectedFile = null;
+            fileInput.value = '';
+            fileNameDisplay.textContent = '';
+            uploadBtn.disabled = true;
+            document.getElementById('result-section').style.display = 'none';
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('error-log').style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>

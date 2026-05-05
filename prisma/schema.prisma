@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model ChatMessage {
+  id           Int                   @id @default(autoincrement())
+  senderId     String                @db.VarChar(50)
+  senderName   String                @db.VarChar(50)
+  message      String                @db.Text
+  messageType  String                @default("chat") @db.VarChar(20)
+  room         String                @default("main") @db.VarChar(50)
+  isDeleted    Boolean               @default(false)
+  isEdited     Boolean               @default(false)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  fileName     String?               @db.VarChar(255)
+  fileSize     Int?
+  fileUrl      String?               @db.VarChar(500)
+  parentId     Int?
+  reactions    ChatMessageReaction[]
+  parent       ChatMessage?          @relation("ChatThread", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  replies      ChatMessage[]         @relation("ChatThread")
+  readReceipts MessageReadReceipt[]
+
+  @@index([room, createdAt])
+  @@index([senderId])
+  @@index([parentId], map: "idx_parentId")
+  @@map("chat_messages")
+}
+
+model ChatMessageReaction {
+  id        Int         @id @default(autoincrement())
+  messageId Int
+  deviceId  String      @db.VarChar(50)
+  createdAt DateTime?   @default(now()) @db.DateTime(0)
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_reaction_message")
+
+  @@unique([messageId, deviceId], map: "idx_message_device")
+  @@map("chat_message_reactions")
+}
+
+model MessageReadReceipt {
+  id        Int         @id @default(autoincrement())
+  messageId Int
+  readerId  String      @db.VarChar(50)
+  readAt    DateTime    @default(now())
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, readerId])
+  @@map("message_read_receipts")
+}
+
+model SystemEvent {
+  id        Int      @id @default(autoincrement())
+  eventType String   @db.VarChar(50)
+  title     String   @db.VarChar(200)
+  payload   String?  @db.LongText
+  createdAt DateTime @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([createdAt])
+  @@map("system_events")
+}
+
+model Device {
+  id         String   @id @db.VarChar(50)
+  name       String   @db.VarChar(50)
+  role       String   @db.VarChar(20)
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@map("devices")
+}
+
+model ChatAttachment {
+  id         Int      @id @default(autoincrement())
+  messageId  Int?
+  fileName   String   @db.VarChar(255)
+  filePath   String   @db.VarChar(500)
+  fileSize   Int
+  mimeType   String   @db.VarChar(100)
+  uploadedAt DateTime @default(now())
+
+  @@index([messageId])
+  @@map("chat_attachments")
+}
+
+model bookings {
+  id          Int       @id @default(autoincrement())
+  patientId   Int?
+  chartNo     String?   @db.VarChar(50)
+  name        String?   @db.VarChar(100)
+  patientName String?   @db.VarChar(100)
+  phone       String?   @db.VarChar(50)
+  date        DateTime? @db.Date
+  time        String?   @db.VarChar(20)
+  status      String?   @db.VarChar(50)
+  notes       String?   @db.Text
+  purpose     String?   @db.Text
+  bookingId   String?   @db.VarChar(100)
+  naverStatus String?   @db.VarChar(50)
+  platform    String?   @default("white") @db.VarChar(50)
+  updatedAt   DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([date], map: "idx_date")
+  @@index([patientId], map: "idx_patientId")
+}
+
+model non_reimbursements {
+  id        Int       @id @default(autoincrement())
+  patientId Int?
+  itemName  String?   @db.VarChar(100)
+  amount    Int?
+  method    String?   @db.VarChar(50)
+  quantity  Int?
+  date      DateTime? @db.Date
+  notes     String?   @db.Text
+  updatedAt DateTime? @default(now()) @db.DateTime(0)
+}
+
+model message_history {
+  id             String    @id @db.VarChar(100)
+  patientName    String?   @db.VarChar(100)
+  chartNo        String?   @db.VarChar(50)
+  phone          String?   @db.VarChar(50)
+  type           String?   @db.VarChar(50)
+  status         String?   @db.VarChar(50)
+  message        String?   @db.Text
+  templateCode   String?   @db.VarChar(50)
+  sentAt         DateTime? @db.DateTime(0)
+  prescriptionId Int?
+  requestId      String?   @db.VarChar(100)
+}
+
+model patient_memos {
+  id          Int       @id @default(autoincrement())
+  patientId   Int?
+  patientName String?   @db.VarChar(100)
+  content     String?   @db.Text
+  createdAt   DateTime? @default(now()) @db.DateTime(0)
+  updatedAt   DateTime? @default(now()) @db.DateTime(0)
+}
+
+model patients {
+  id          Int       @id @default(autoincrement())
+  chartNo     String?   @unique(map: "chartNo") @db.VarChar(50)
+  name        String    @db.VarChar(100)
+  phone       String?   @db.VarChar(50)
+  birthGender String?   @db.VarChar(20)
+  address     String?   @db.Text
+  createdAt   DateTime? @default(now()) @db.DateTime(0)
+  updatedAt   DateTime? @default(now()) @db.DateTime(0)
+  hasKakao    Boolean?  @default(true)
+  rejectSms   Boolean?  @default(false)
+
+  @@index([name], map: "idx_name")
+  @@index([phone], map: "idx_phone")
+}
+
+model today_visits {
+  id          Int       @id @default(autoincrement())
+  patientId   Int?
+  patientName String?   @db.VarChar(100)
+  chartNo     String?   @db.VarChar(50)
+  birthGender String?   @db.VarChar(20)
+  status      String?   @default("waiting") @db.VarChar(50)
+  visitedAt   DateTime? @default(now()) @db.DateTime(0)
+  date        DateTime? @db.Date
+  fromBooking Boolean?  @default(false)
+  bookingId   String?   @db.VarChar(100)
+
+  @@index([visitedAt], map: "idx_visitedAt")
+}
+
+model treatment_history {
+  id          Int       @id @default(autoincrement())
+  patientId   Int?
+  patientName String?   @db.VarChar(100)
+  chartNo     String?   @db.VarChar(50)
+  date        DateTime? @db.Date
+  entryTime   DateTime? @db.DateTime(0)
+  exitTime    DateTime? @db.DateTime(0)
+  bedNo       Int?
+  status      String?   @db.LongText
+  note        String?   @db.Text
+  content     String?   @db.Text
+  raw         String?   @db.LongText
+  createdAt   DateTime? @default(now()) @db.DateTime(0)
+}
+
+model receipt {
+  id               Int      @id @default(autoincrement())
+  visitId          BigInt?  @unique
+  patientId        Int?
+  patientName      String?  @db.VarChar(100)
+  chartNo          String?  @db.VarChar(50)
+  type             String?  @db.VarChar(50)
+  procedureDetails String?  @db.Text
+  cashAmount       Int      @default(0)
+  cardAmount       Int      @default(0)
+  cardName         String?  @db.VarChar(100)
+  date             DateTime @db.Date
+  createdAt        DateTime @default(now())
+
+  @@map("receipts")
+}
+
+model expense {
+  id          Int      @id @default(autoincrement())
+  description String?  @db.Text
+  amount      Int      @default(0)
+  date        DateTime @db.Date
+  createdAt   DateTime @default(now())
+
+  @@map("expenses")
+}
+
+model TA_patient {
+  id               Int       @id @default(autoincrement())
+  patientId        Int?
+  chartNo          String?   @db.VarChar(50)
+  patientName      String?   @db.VarChar(100)
+  accidentDate     DateTime? @db.Date
+  initialVisitDate DateTime? @db.Date
+  status           String?   @default("active") @db.VarChar(50)
+  createdAt        DateTime? @default(now()) @db.DateTime(0)
+  updatedAt        DateTime? @default(now()) @db.DateTime(0)
+
+  @@map("TA_patient")
+}

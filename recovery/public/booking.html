@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>예약 관리 - 신방한의원</title>
+    <link rel="icon" href="data:,">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: none;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        /* 2컬럼 레이아웃 */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-section {
+            background: #fafafa;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        /* 테이블 */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px 10px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #667eea;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        /* 환자 드롭다운 */
+        .patient-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 0 0 8px 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+        }
+
+        .patient-dropdown-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .patient-dropdown-item:hover,
+        .patient-dropdown-item.active {
+            background: #f0f4ff;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.85rem;
+            margin-right: 5px;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        /* 모달 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        tr.past-booking {
+            opacity: 0.6;
+        }
+
+        .status-future {
+            color: #059669;
+            font-weight: 500;
+        }
+
+        .status-past {
+            color: #9ca3af;
+        }
+
+        /* 좌측 컬럼 래퍼 */
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 내일 예약 명단 */
+        .tomorrow-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tomorrow-header .date-badge {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #667eea;
+            background: #eef2ff;
+            padding: 3px 10px;
+            border-radius: 12px;
+        }
+
+        .tomorrow-header .date-badge.weekend {
+            color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .tomorrow-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #667eea;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            min-width: 22px;
+            height: 22px;
+            border-radius: 11px;
+            padding: 0 6px;
+            margin-left: 6px;
+        }
+
+        .tomorrow-count.empty {
+            background: #d1d5db;
+        }
+
+        .tomorrow-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .tomorrow-table th {
+            background: #f0f0f0;
+            font-weight: 600;
+            color: #667eea;
+            padding: 8px 6px;
+            text-align: left;
+            border-bottom: 2px solid #e5e7eb;
+            font-size: 0.85rem;
+            position: static;
+        }
+
+        .tomorrow-table td {
+            padding: 7px 6px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.85rem;
+        }
+
+        .tomorrow-table tbody tr:hover {
+            background: #f5f3ff;
+        }
+
+        .tomorrow-empty {
+            text-align: center;
+            color: #999;
+            padding: 25px 10px;
+            font-size: 0.9rem;
+        }
+
+        /* 시간 캡슐 버튼 */
+        .time-capsule-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .time-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .time-group-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 12px;
+            margin-right: 2px;
+            flex-shrink: 0;
+        }
+
+        .time-group-label.am {
+            color: #4b5ea8;
+            background: #e0e7ff;
+        }
+
+        .time-group-label.pm {
+            color: #b85c2f;
+            background: #ffecd6;
+        }
+
+        .time-capsule {
+            padding: 7px 14px;
+            border: 1.5px solid #c7d2fe;
+            border-radius: 20px;
+            background: #f0f4ff;
+            color: #4b5ea8;
+            font-size: 0.88rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            font-family: inherit;
+        }
+
+        .time-capsule:hover {
+            border-color: #667eea;
+            color: #667eea;
+            background: #e0e7ff;
+        }
+
+        .time-capsule.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        /* 오후 캡슐 */
+        .time-capsule.pm {
+            border-color: #fcd6b8;
+            background: #fff7f0;
+            color: #b85c2f;
+        }
+
+        .time-capsule.pm:hover {
+            border-color: #f59e0b;
+            color: #d97706;
+            background: #fef3c7;
+        }
+
+        .time-capsule.pm.selected {
+            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>📅 예약 관리</h1>
+        </div>
+
+        <div class="content">
+            <div class="two-column">
+                <!-- 좌측 컬럼 래퍼 -->
+                <div class="left-column">
+                    <!-- 새 예약 등록 -->
+                    <div class="form-section">
+                        <h2 class="section-title"
+                            style="display: flex; justify-content: space-between; align-items: center;">
+                            새 예약 등록
+                            <button class="btn btn-sm btn-secondary" onclick="openConfigModal()"
+                                style="font-size: 0.8rem; background: #667eea; color: white; border: none;">🔔 알림 설정</button>
+                        </h2>
+                        <div class="form-group">
+                            <label>환자 검색</label>
+                            <div style="position: relative;">
+                                <input type="text" id="booking-patient-search" placeholder="이름, 차트번호로 검색..."
+                                    oninput="filterBookingPatients()" onkeydown="onBookingSearchKeyDown(event)" onfocus="showBookingPatientDropdown()">
+                                <div id="booking-patient-dropdown" class="patient-dropdown" style="display: none;"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>예약 날짜</label>
+                            <input type="date" id="booking-date">
+                        </div>
+                        <div class="form-group">
+                            <label>예약 시간</label>
+                            <div id="booking-time" class="time-capsule-container"></div>
+                        </div>
+                        <button class="btn btn-primary" onclick="addBooking()">예약 추가</button>
+                    </div>
+
+                    <!-- 내일 예약 명단 -->
+                    <div class="form-section">
+                        <div class="tomorrow-header">
+                            <h2 class="section-title" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none;">
+                                📅 내일 예약 명단
+                                <span id="tomorrow-count" class="tomorrow-count empty">0</span>
+                            </h2>
+                            <span id="tomorrow-date-badge" class="date-badge"></span>
+                        </div>
+                        <div style="border-top: 2px solid #f0f0f0; margin-top: 10px; padding-top: 10px;">
+                            <div id="tomorrow-booking-list" class="tomorrow-empty">로딩 중...</div>
+                        </div>
+                    </div>
+                </div><!-- /left-column -->
+
+                <div class="form-section">
+                    <h2 class="section-title">
+                        예약 목록
+                    </h2>
+                    <div id="booking-list" class="empty-state">로딩 중...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 알림 설정 모달 -->
+    <div id="config-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3>🔔 알림 발송 시간 설정</h3>
+            <div class="form-group">
+                <label>당일 발송 시간 (D-Day)</label>
+                <select id="config-dday-time" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <!-- JS에서 시간 생성 -->
+                </select>
+                <p style="font-size: 0.8rem; color: #666; margin-top: 8px;">
+                    * 예약 당일 지정된 시간에 알림톡이 자동 발송됩니다.
+                </p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="saveBookingConfig()">저장</button>
+                <button class="btn btn-secondary" onclick="closeConfigModal()">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 예약 수정 모달 -->
+    <div id="edit-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>📝 예약 수정</h3>
+            <input type="hidden" id="edit-booking-id">
+            <div class="form-group">
+                <label>환자명</label>
+                <input type="text" id="edit-name" readonly>
+            </div>
+            <div class="form-group">
+                <label>예약 날짜</label>
+                <input type="date" id="edit-date">
+            </div>
+            <div class="form-group">
+                <label>예약 시간</label>
+                <div id="edit-time" class="time-capsule-container"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="saveBookingEdit()">저장</button>
+                <button class="btn btn-secondary" onclick="closeEditModal()">취소</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script>
+        const API_BASE = '';
+        let allPatients = [];
+        let selectedBookingPatient = null;
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', init);
+
+        async function init() {
+            await loadPatients();
+            initializeTimeSelect();
+            initializeConfigTimeSelect(); // 알림 설정 시간 선택기 초기화
+            await loadBookingList();
+            await loadTomorrowBookings();
+        }
+
+        function initializeConfigTimeSelect() {
+            const select = document.getElementById('config-dday-time');
+            if (!select) return;
+            select.innerHTML = '';
+            for (let h = 7; h <= 11; h++) {
+                for (let m = 0; m < 60; m += 30) {
+                    const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    const option = document.createElement('option');
+                    option.value = timeStr;
+                    option.textContent = timeStr;
+                    select.appendChild(option);
+                }
+            }
+        }
+
+
+        async function loadPatients() {
+            try {
+                const response = await fetch(`${API_BASE}/api/patients`);
+                const result = await response.json();
+                if (result.success) {
+                    allPatients = result.data;
+                }
+            } catch (error) {
+                console.error('환자 목록 로드 실패:', error);
+            }
+        }
+
+        // 예약 가능 시간 목록 (12:30, 13:00, 13:30 제외 / 19:00 추가)
+        const BOOKING_TIMES = [
+            '09:00','09:30','10:00','10:30','11:00','11:30','12:00',
+            '14:00','14:30','15:00','15:30','16:00','16:30',
+            '17:00','17:30','18:00','18:30','19:00'
+        ];
+
+        function createTimeCapsules(container, times, selectedTime) {
+            container.innerHTML = '';
+
+            const amTimes = times.filter(t => parseInt(t.split(':')[0], 10) < 13);
+            const pmTimes = times.filter(t => parseInt(t.split(':')[0], 10) >= 13);
+
+            // 오전 그룹
+            if (amTimes.length > 0) {
+                const amGroup = document.createElement('div');
+                amGroup.className = 'time-group';
+                const amLabel = document.createElement('span');
+                amLabel.className = 'time-group-label am';
+                amLabel.textContent = '오전';
+                amGroup.appendChild(amLabel);
+                amTimes.forEach(t => {
+                    amGroup.appendChild(makeCapsuleBtn(t, false, selectedTime, container));
+                });
+                container.appendChild(amGroup);
+            }
+
+            // 오후 그룹
+            if (pmTimes.length > 0) {
+                const pmGroup = document.createElement('div');
+                pmGroup.className = 'time-group';
+                const pmLabel = document.createElement('span');
+                pmLabel.className = 'time-group-label pm';
+                pmLabel.textContent = '오후';
+                pmGroup.appendChild(pmLabel);
+                pmTimes.forEach(t => {
+                    pmGroup.appendChild(makeCapsuleBtn(t, true, selectedTime, container));
+                });
+                container.appendChild(pmGroup);
+            }
+        }
+
+        function makeCapsuleBtn(timeStr, isPm, selectedTime, container) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'time-capsule' + (isPm ? ' pm' : '');
+            btn.dataset.time = timeStr;
+            btn.textContent = timeStr;
+            if (timeStr === selectedTime) btn.classList.add('selected');
+            btn.addEventListener('click', () => selectTimeCapsule(container, btn));
+            return btn;
+        }
+
+        function initializeTimeSelect() {
+            const container = document.getElementById('booking-time');
+            if (!container) return;
+            createTimeCapsules(container, BOOKING_TIMES, '');
+        }
+
+        function selectTimeCapsule(container, btn) {
+            container.querySelectorAll('.time-capsule').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+
+        function getSelectedTime(containerId) {
+            const selected = document.getElementById(containerId)?.querySelector('.time-capsule.selected');
+            return selected ? selected.dataset.time : '';
+        }
+
+        async function loadBookingList() {
+            try {
+                const response = await fetch(`${API_BASE}/api/bookings`);
+                const result = await response.json();
+
+                if (result.success) {
+                    displayBookingList(result.data);
+                } else {
+                    document.getElementById('booking-list').innerHTML =
+                        '<p class="empty-state">예약 목록 불러오기 실패</p>';
+                }
+            } catch (error) {
+                console.error('예약 목록 로드 실패:', error);
+                document.getElementById('booking-list').innerHTML =
+                    '<p class="empty-state">예약 목록 불러오기 오류</p>';
+            }
+        }
+
+        function displayBookingList(bookings) {
+            const listDiv = document.getElementById('booking-list');
+
+            if (!bookings || bookings.length === 0) {
+                listDiv.innerHTML = '<p class="empty-state">예약이 없습니다</p>';
+                return;
+            }
+
+            // 현재 시간
+            const now = new Date();
+
+            let html = `
+                <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>이름</th>
+                            <th>전화번호</th>
+                            <th>날짜</th>
+                            <th>시간</th>
+                            <th>상태</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            bookings.forEach(b => {
+                // 날짜 표준화 (MariaDB Date 객체 대응)
+                const dateStr = (b.date || '').slice(0, 10);
+                // 예약 시간 파싱 (날짜 문자열이 ISO인 경우 대비 slice 사용)
+                const bookingDateTime = new Date(`${dateStr}T${b.time}:00`);
+                const isFuture = bookingDateTime > now;
+                const rowClass = isFuture ? '' : 'past-booking';
+                const statusClass = isFuture ? 'status-future' : 'status-past';
+                let statusText = isFuture ? (b.status || '예약') : '완료';
+                if (b.platform === 'naver' || b.naverStatus) {
+                    statusText += ' <span style="font-weight:900; color:#03C75A;">N</span>';
+                }
+
+                let actionButtons = '';
+                if (isFuture) {
+                    const bookingData = JSON.stringify(b).replace(/"/g, '&quot;');
+                    actionButtons = `
+                        <button class="btn btn-sm btn-warning" onclick='openEditModal(${bookingData})'>수정</button>
+                        <button class="btn btn-sm btn-danger" onclick='cancelBooking(${b.id})'>취소</button>
+                    `;
+                } else {
+                    actionButtons = '<span style="color:#999;">-</span>';
+                }
+
+                html += `
+                    <tr class="${rowClass}">
+                        <td>${b.name}</td>
+                        <td>${b.phone}</td>
+                        <td>${dateStr}</td>
+                        <td>${b.time}</td>
+                        <td class="${statusClass}">${statusText}</td>
+                        <td>${actionButtons}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+                </div>
+            `;
+
+            listDiv.innerHTML = html;
+        }
+
+        function showBookingPatientDropdown() {
+            filterBookingPatients();
+        }
+
+        let bookingSearchResults = [];
+        let selectedBookingIdx = -1;
+
+        function filterBookingPatients() {
+            const searchInput = document.getElementById('booking-patient-search');
+            const dropdown = document.getElementById('booking-patient-dropdown');
+            if (!searchInput || !dropdown) return;
+
+            const query = searchInput.value.toLowerCase().trim();
+
+            if (query === '') {
+                dropdown.style.display = 'none';
+                bookingSearchResults = [];
+                selectedBookingIdx = -1;
+                return;
+            }
+
+            bookingSearchResults = allPatients.filter(p =>
+                p.name.toLowerCase().includes(query) ||
+                p.chartNo.toString().includes(query) ||
+                p.phone.includes(query)
+            ).slice(0, 15);
+
+            if (bookingSearchResults.length === 0) {
+                dropdown.innerHTML = '<div style="padding: 10px; color: #999;">검색 결과가 없습니다</div>';
+                dropdown.style.display = 'block';
+                selectedBookingIdx = -1;
+                return;
+            }
+
+            selectedBookingIdx = 0;
+            renderBookingDropdown();
+        }
+
+        function renderBookingDropdown() {
+            const dropdown = document.getElementById('booking-patient-dropdown');
+            dropdown.innerHTML = bookingSearchResults.map((p, idx) => `
+                <div class="patient-dropdown-item ${idx === selectedBookingIdx ? 'active' : ''}" onclick='selectBookingPatient(${JSON.stringify(p)})'>
+                    <div style="font-weight: bold;">${p.name} (${p.chartNo})</div>
+                    <div style="color: #666; font-size: 0.9rem;">${p.phone}</div>
+                </div>
+            `).join('');
+            dropdown.style.display = 'block';
+
+            // 활성 항목 스크롤
+            const activeItem = dropdown.querySelector('.patient-dropdown-item.active');
+            if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
+        }
+
+        function onBookingSearchKeyDown(e) {
+            if (!bookingSearchResults.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedBookingIdx = (selectedBookingIdx + 1) % bookingSearchResults.length;
+                renderBookingDropdown();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedBookingIdx = (selectedBookingIdx - 1 + bookingSearchResults.length) % bookingSearchResults.length;
+                renderBookingDropdown();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedBookingIdx >= 0 && bookingSearchResults[selectedBookingIdx]) {
+                    selectBookingPatient(bookingSearchResults[selectedBookingIdx]);
+                }
+            } else if (e.key === 'Escape') {
+                document.getElementById('booking-patient-dropdown').style.display = 'none';
+            }
+        }
+
+        function selectBookingPatient(patient) {
+            selectedBookingPatient = patient;
+            document.getElementById('booking-patient-search').value = `${patient.name} (${patient.chartNo})`;
+            document.getElementById('booking-patient-dropdown').style.display = 'none';
+            bookingSearchResults = [];
+            selectedBookingIdx = -1;
+        }
+
+        async function addBooking() {
+            const date = document.getElementById('booking-date').value;
+            const time = getSelectedTime('booking-time');
+
+            if (!selectedBookingPatient || !date || !time) {
+                alert('모든 항목을 입력하세요');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/bookings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: selectedBookingPatient.name,
+                        chartNo: selectedBookingPatient.chartNo,
+                        phone: selectedBookingPatient.phone,
+                        date: date,
+                        time: time,
+                        status: '예약'
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('예약이 추가되었습니다.');
+                    selectedBookingPatient = null;
+                    document.getElementById('booking-patient-search').value = '';
+                    document.getElementById('booking-date').value = '';
+                    document.getElementById('booking-time').querySelectorAll('.time-capsule').forEach(b => b.classList.remove('selected'));
+                    loadBookingList();
+                    loadTomorrowBookings();
+                } else {
+                    alert('예약 추가 실패: ' + result.message);
+                }
+            } catch (error) {
+                console.error('예약 추가 오류:', error);
+                alert('예약 추가 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 클릭 외부 시 드롭다운 닫기
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#booking-patient-search') && !e.target.closest('#booking-patient-dropdown')) {
+                const dropdown = document.getElementById('booking-patient-dropdown');
+                if (dropdown) dropdown.style.display = 'none';
+            }
+        });
+
+        // ==================== 예약 수정/취소 기능 ====================
+
+        function openEditModal(booking) {
+            document.getElementById('edit-booking-id').value = booking.id;
+            document.getElementById('edit-name').value = booking.name;
+            document.getElementById('edit-date').value = (booking.date || '').slice(0, 10);
+
+            // 시간 선택 초기화
+            initEditTimeSelect(booking.time);
+
+            document.getElementById('edit-modal').classList.add('show');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.remove('show');
+        }
+
+        function initEditTimeSelect(selectedTime) {
+            const container = document.getElementById('edit-time');
+            createTimeCapsules(container, BOOKING_TIMES, selectedTime);
+        }
+
+        async function saveBookingEdit() {
+            const id = document.getElementById('edit-booking-id').value;
+            const date = document.getElementById('edit-date').value;
+            const time = getSelectedTime('edit-time');
+
+            if (!date || !time) {
+                alert('날짜와 시간을 입력하세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/bookings/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, time })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('예약이 수정되었습니다.');
+                    closeEditModal();
+                    loadBookingList();
+                    loadTomorrowBookings();
+                } else {
+                    alert('수정 실패: ' + result.message);
+                }
+            } catch (error) {
+                console.error('예약 수정 오류:', error);
+                alert('예약 수정 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function cancelBooking(id) {
+            if (!confirm('이 예약을 취소하시겠습니까?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/bookings/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('예약이 취소되었습니다.');
+                    loadBookingList();
+                    loadTomorrowBookings();
+                } else {
+                    alert('취소 실패: ' + result.message);
+                }
+            } catch (error) {
+                console.error('예약 취소 오류:', error);
+                alert('예약 취소 중 오류가 발생했습니다.');
+            }
+        }
+
+
+
+
+
+        // ==================== 알림 설정 기능 ====================
+
+        async function openConfigModal() {
+            try {
+                const response = await fetch(`${API_BASE}/api/settings/booking-config`);
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('config-dday-time').value = result.data.dDayTime;
+                    document.getElementById('config-modal').classList.add('show');
+                } else {
+                    alert('설정을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('설정 로드 오류:', error);
+                alert('설정 로드 중 오류가 발생했습니다.');
+            }
+        }
+
+        function closeConfigModal() {
+            document.getElementById('config-modal').classList.remove('show');
+        }
+
+        async function saveBookingConfig() {
+            const dDayTime = document.getElementById('config-dday-time').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/settings/booking-config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dDayTime })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('발송 시간이 저장되었습니다.');
+                    closeConfigModal();
+                } else {
+                    alert('저장 실패: ' + result.message);
+                }
+            } catch (error) {
+                console.error('설정 저장 오류:', error);
+                alert('저장 중 오류가 발생했습니다.');
+            }
+        }
+
+        // ==================== 내일 예약 명단 기능 ====================
+
+        async function loadTomorrowBookings() {
+            try {
+                const response = await fetch(`${API_BASE}/api/bookings/tomorrow`);
+                const result = await response.json();
+
+                if (result.success) {
+                    displayTomorrowBookings(result.data);
+                } else {
+                    document.getElementById('tomorrow-booking-list').innerHTML =
+                        '<div class="tomorrow-empty">내일 예약 목록 불러오기 실패</div>';
+                }
+            } catch (error) {
+                console.error('내일 예약 로드 실패:', error);
+                document.getElementById('tomorrow-booking-list').innerHTML =
+                    '<div class="tomorrow-empty">내일 예약 목록 불러오기 오류</div>';
+            }
+        }
+
+        function displayTomorrowBookings(bookings) {
+            const listDiv = document.getElementById('tomorrow-booking-list');
+            const countBadge = document.getElementById('tomorrow-count');
+            const dateBadge = document.getElementById('tomorrow-date-badge');
+
+            // 내일 날짜/요일 계산
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const month = tomorrow.getMonth() + 1;
+            const day = tomorrow.getDate();
+            const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+            const dayOfWeek = dayNames[tomorrow.getDay()];
+            const isWeekend = tomorrow.getDay() === 0 || tomorrow.getDay() === 6;
+
+            // 날짜 뱃지 표시
+            if (dateBadge) {
+                dateBadge.textContent = `${month}/${day}(${dayOfWeek})`;
+                dateBadge.className = `date-badge${isWeekend ? ' weekend' : ''}`;
+            }
+
+            // 건수 뱃지 표시
+            const count = (bookings && bookings.length) || 0;
+            if (countBadge) {
+                countBadge.textContent = count;
+                countBadge.className = count > 0 ? 'tomorrow-count' : 'tomorrow-count empty';
+            }
+
+            if (!bookings || bookings.length === 0) {
+                listDiv.innerHTML = '<div class="tomorrow-empty">내일 예약이 없습니다</div>';
+                return;
+            }
+
+            let html = `
+                <table class="tomorrow-table">
+                    <thead>
+                        <tr>
+                            <th>시간</th>
+                            <th>환자</th>
+                            <th>차트번호</th>
+                            <th>전화번호</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            bookings.forEach(b => {
+                html += `
+                    <tr>
+                        <td style="font-weight:600;">${b.time || '-'}</td>
+                        <td>${b.name || '-'}</td>
+                        <td>${b.chartNo || '-'}</td>
+                        <td>${b.phone || '-'}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            listDiv.innerHTML = html;
+        }
+    </script>
+</body>
+
+</html>

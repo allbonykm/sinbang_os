@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>배송 조회 - 신방한의원</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1a1a2e;
+            --accent: #667eea;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --bg: #f8fafc;
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin: 20px;
+        }
+
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header img {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 20px;
+            border-radius: 50%;
+            background: white;
+            padding: 10px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .info-card {
+            background: #f1f5f9;
+            padding: 25px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .label {
+            color: var(--text-sub);
+            font-size: 14px;
+        }
+
+        .value {
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .track-btn {
+            display: block;
+            width: 100%;
+            padding: 18px;
+            background: var(--accent);
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: all 0.2s;
+        }
+
+        .track-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-sub);
+            border-top: 1px solid #f1f5f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="font-size: 40px; margin-bottom: 10px;">🏥</div>
+            <h1>신방한의원</h1>
+            <p style="opacity: 0.8; margin-top: 8px;">주문하신 상품의 배송 안내입니다.</p>
+        </div>
+        <div class="content">
+            <div class="info-card">
+                <div class="info-row">
+                    <span class="label">상품명</span>
+                    <span class="value" id="product-name">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">택배사</span>
+                    <span class="value" id="carrier-name">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">송장번호</span>
+                    <span class="value" id="tracking-no">-</span>
+                </div>
+            </div>
+
+            <a href="#" id="delivery-link" target="_blank" class="track-btn">📦 실시간 배송 조회하기</a>
+        </div>
+        <div class="footer">
+            &copy; 2026 신방한의원 All rights reserved.
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const product = params.get('p') || '한약';
+        const trackNo = params.get('t');
+        const carrierCode = params.get('c');
+
+        const carriers = {
+            '06': { name: '로젠택배', url: 'https://www.ilogen.com/web/personal/trace/' },
+            '01': { name: '우체국택배', url: 'https://service.epost.go.kr/trace.RetrieveDomakskTraceList.comm?displayHeader=N&sid1=' },
+            '16': { name: '한의사랑택배', url: 'http://hanyisarang.com/delivery/trace?id=' },
+            '04': { name: 'CJ대한통운', url: 'https://www.cjlogistics.com/ko/tool/parcel/tracking?invNo=' },
+            '05': { name: '한진택배', url: 'https://www.hanjin.co.kr/kor/CMS/DeliveryMgr/WaybillResult.do?mCode=MN038&wblNum=' },
+            '08': { name: '롯데택배', url: 'https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo=' }
+        };
+
+        const carrier = carriers[carrierCode] || { name: '기타', url: '' };
+
+        document.getElementById('product-name').innerText = product;
+        document.getElementById('carrier-name').innerText = carrier.name;
+        document.getElementById('tracking-no').innerText = trackNo || '기록 없음';
+
+        const linkEl = document.getElementById('delivery-link');
+        if (trackNo && carrier.url) {
+            linkEl.href = carrier.url + trackNo;
+        } else {
+            linkEl.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

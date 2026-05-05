@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자보 안내문 - 신방한의원 OS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 25px;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* 환자 검색 드롭다운 */
+        .patient-search-container {
+            position: relative;
+            display: flex;
+            gap: 8px;
+        }
+
+        .patient-search-container input {
+            flex: 1;
+        }
+
+        .dropdown-toggle-btn {
+            padding: 0 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .dropdown-toggle-btn:hover {
+            background: #5a67d8;
+        }
+
+        .patient-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .patient-dropdown.show {
+            display: block;
+        }
+
+        .patient-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .patient-item:hover {
+            background: #f3f4f6;
+        }
+
+        .patient-item .name {
+            font-weight: 600;
+        }
+
+        .patient-item .info {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        /* 선택된 환자 정보 */
+        .selected-patient {
+            display: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .selected-patient.show {
+            display: block;
+        }
+
+        .selected-patient .patient-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .selected-patient .patient-detail {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* 버튼 그룹 */
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-choejin {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-choejin:hover:not(:disabled) {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-diagnosis {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-diagnosis:hover:not(:disabled) {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn .icon {
+            font-size: 28px;
+        }
+
+        .btn .text {
+            font-size: 14px;
+        }
+
+        /* 안내 메시지 */
+        .hint {
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="section">
+            <h2>📋 자보 안내문</h2>
+
+            <div class="form-group">
+                <label>자동차보험 환자 검색</label>
+                <div class="patient-search-container">
+                    <input type="text" id="patient-search" placeholder="환자 이름으로 검색..." autocomplete="off">
+                    <button class="dropdown-toggle-btn" onclick="toggleDropdown()" type="button">▼</button>
+                    <div class="patient-dropdown" id="patient-dropdown"></div>
+                </div>
+            </div>
+
+            <div class="selected-patient" id="selected-patient">
+                <div class="patient-name" id="display-name"></div>
+                <div class="patient-detail">
+                    <span id="display-accident-date"></span> ·
+                    <span id="display-first-visit"></span> ·
+                    <span id="display-days"></span>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-choejin" id="btn-choejin" onclick="printGuide('choejin')" disabled>
+                    <span class="icon">📄</span>
+                    <span class="text">초진 안내문</span>
+                </button>
+                <button class="btn btn-diagnosis" id="btn-diagnosis" onclick="printGuide('diagnosis')" disabled>
+                    <span class="icon">📋</span>
+                    <span class="text">진단서 안내문</span>
+                </button>
+            </div>
+
+            <p class="hint">환자를 선택하면 안내문 출력 버튼이 활성화됩니다.</p>
+        </div>
+    </div>
+
+    <script>
+        let jaboPatients = [];
+        let selectedPatient = null;
+
+        // 자동차보험 환자 목록 로드
+        async function loadJaboPatients() {
+            try {
+                const response = await fetch('/api/jabo-patients');
+                const result = await response.json();
+                if (result.success) {
+                    jaboPatients = result.data.filter(p => p.status === 'active');
+                    renderDropdown(jaboPatients);
+
+                    // URL 파라미터로 ID가 전달된 경우 자동 선택
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const preselectedId = urlParams.get('id');
+                    if (preselectedId) {
+                        selectPatient(preselectedId);
+                    }
+                }
+            } catch (error) {
+                console.error('자보 환자 로드 오류:', error);
+            }
+        }
+
+        // 드롭다운 렌더링
+        function renderDropdown(patients) {
+            const dropdown = document.getElementById('patient-dropdown');
+            if (patients.length === 0) {
+                dropdown.innerHTML = '<div class="patient-item" style="color: #9ca3af;">검색 결과 없음</div>';
+                return;
+            }
+
+            dropdown.innerHTML = patients.map(p => `
+                <div class="patient-item" onclick="selectPatient(${p.id})">
+                    <span class="name">${p.patientName}</span>
+                    <span class="info">사고일: ${p.accidentDate}</span>
+                </div>
+            `).join('');
+        }
+
+        // 환자 검색
+        document.getElementById('patient-search').addEventListener('input', (e) => {
+            const query = e.target.value.trim().toLowerCase();
+            const dropdown = document.getElementById('patient-dropdown');
+
+            if (query.length < 1) {
+                dropdown.classList.remove('show');
+                return;
+            }
+
+            const filtered = jaboPatients.filter(p =>
+                p.patientName.toLowerCase().includes(query)
+            );
+
+            renderDropdown(filtered);
+            dropdown.classList.add('show');
+        });
+
+        // 입력 필드 포커스
+        document.getElementById('patient-search').addEventListener('focus', () => {
+            const query = document.getElementById('patient-search').value.trim();
+            if (query.length >= 1) {
+                document.getElementById('patient-dropdown').classList.add('show');
+            }
+        });
+
+        // 외부 클릭 시 드롭다운 닫기
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.patient-search-container')) {
+                document.getElementById('patient-dropdown').classList.remove('show');
+            }
+        });
+
+        // 드롭다운 토글 (전체 목록 표시)
+        function toggleDropdown() {
+            const dropdown = document.getElementById('patient-dropdown');
+            if (dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
+            } else {
+                renderDropdown(jaboPatients); // 전체 리스트 표시
+                dropdown.classList.add('show');
+            }
+        }
+
+        // 환자 선택
+        async function selectPatient(id) {
+            try {
+                const response = await fetch(`/api/jabo-patients/${id}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    selectedPatient = result.data;
+
+                    // 입력 필드 업데이트
+                    document.getElementById('patient-search').value = selectedPatient.patientName;
+                    document.getElementById('patient-dropdown').classList.remove('show');
+
+                    // 선택된 환자 정보 표시
+                    document.getElementById('display-name').textContent = selectedPatient.patientName;
+                    document.getElementById('display-accident-date').textContent = `사고일: ${selectedPatient.accidentDate}`;
+                    document.getElementById('display-first-visit').textContent = `초진일: ${selectedPatient.initialVisitDate}`;
+                    
+                    // 경과일 계산
+                    const today = new Date();
+                    const accidentDate = new Date(selectedPatient.accidentDate);
+                    accidentDate.setHours(0,0,0,0);
+                    today.setHours(0,0,0,0);
+                    const diffDays = Math.floor((today - accidentDate) / (1000 * 60 * 60 * 24)) + 1;
+                    
+                    document.getElementById('display-days').textContent = `D+${diffDays}`;
+                    document.getElementById('selected-patient').classList.add('show');
+
+                    // 버튼 활성화
+                    document.getElementById('btn-choejin').disabled = false;
+                    document.getElementById('btn-diagnosis').disabled = false;
+                }
+            } catch (error) {
+                console.error('환자 정보 로드 오류:', error);
+            }
+        }
+
+        // 안내문 출력
+        function printGuide(type) {
+            if (!selectedPatient) {
+                alert('환자를 선택해주세요.');
+                return;
+            }
+
+            if (type === 'choejin') {
+                window.open(`/guide/print-TA-guide.html?id=${selectedPatient.id}&type=choejin`, '_blank');
+            } else if (type === 'diagnosis') {
+                // 진단서 주 선택 (2, 3, 4주)
+                const weeks = prompt('진단서 기간을 선택하세요 (2, 3, 4):', '3');
+                if (weeks && ['2', '3', '4'].includes(weeks)) {
+                    window.open(`/guide/print-TA-guide.html?id=${selectedPatient.id}&type=diagnosis&weeks=${weeks}`, '_blank');
+                }
+            }
+        }
+
+        // 초기화
+        loadJaboPatients();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,2417 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>올톡 - 알림톡 발송 창구</title>
+    <link href="/css/output.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Socket.io 실시간 갱신을 위해 추가 -->
+    <script src="/socket.io/socket.io.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .main-container {
+            display: flex;
+            height: 100%;
+            gap: 16px;
+            padding: 16px;
+            background-color: #f1f5f9; /* 여백 색상 */
+        }
+
+        /* 1열: 템플릿 선택 */
+        .template-col {
+            width: 360px; /* 320px에서 확장 */
+            background: white;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+        }
+
+        .col-header {
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .col-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0 0 4px;
+        }
+
+        .col-header p {
+            font-size: 12px;
+            color: #94a3b8;
+            margin: 0;
+        }
+
+        .template-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .template-select-wrapper {
+            margin-bottom: 16px;
+        }
+
+        .template-select-wrapper label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .template-select-wrapper select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .template-select-wrapper select:focus {
+            border-color: #6366f1;
+        }
+
+        .template-content-box {
+            background: #fefce8;
+            border: 1px solid #fde68a;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #1e293b;
+            white-space: pre-wrap;
+            word-break: keep-all;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .template-content-box .var-highlight {
+            background: #fef08a;
+            padding: 1px 4px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #92400e;
+        }
+
+        .template-buttons-preview {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .template-btn-preview {
+            padding: 8px 12px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #475569;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .template-info {
+            margin-top: 14px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .info-badge {
+            font-size: 11px;
+            padding: 4px 10px;
+            background: #f1f5f9;
+            color: #475569;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .info-badge.active { background: #dcfce7; color: #15803d; }
+        .info-badge.stop { background: #fee2e2; color: #b91c1c; }
+        .info-badge.ready { background: #fef3c7; color: #92400e; }
+
+        .sync-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            margin-bottom: 16px;
+        }
+
+        .sync-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .sync-status {
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 8px;
+        }
+
+        /* 모드 전환 탭 전용 스타일 */
+        .mode-container {
+            display: flex;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-tab {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            border-radius: 7px;
+            transition: all 0.2s;
+        }
+
+        .mode-tab.active {
+            background: white;
+            color: #6366f1;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        /* SMS 입력 영역 */
+        #sms-form {
+            display: none;
+        }
+
+        .sms-textarea {
+            width: 100%;
+            min-height: 180px;
+            padding: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+            outline: none;
+            resize: vertical;
+            font-family: inherit;
+            margin-bottom: 8px;
+        }
+
+        .sms-textarea:focus {
+            border-color: #6366f1;
+        }
+
+        .byte-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 16px;
+        }
+
+        .byte-info strong {
+            color: #6366f1;
+        }
+
+        .byte-info.over-limit strong {
+            color: #f59e0b; /* LMS 경고색 (주황) */
+        }
+
+        /* 미리보기 - SMS 모드 */
+        .iphone-screen.sms-mode {
+            background: white;
+        }
+
+        .iphone-screen.sms-mode .kakao-header {
+            background: #f4f4f4;
+            color: black;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .iphone-screen.sms-mode .kakao-content {
+            background: white;
+        }
+
+        .sms-bubble {
+            align-self: flex-end;
+            background: #10b981; /* Default Green for SMS */
+            color: white;
+            padding: 10px 14px;
+            border-radius: 18px;
+            border-bottom-right-radius: 4px;
+            font-size: 13px;
+            line-height: 1.5;
+            max-width: 85%;
+            word-break: break-all;
+            margin-bottom: 4px;
+        }
+
+        .sms-bubble.lms {
+            background: #3b82f6; /* Blue for LMS */
+        }
+
+        .sms-time {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            align-self: center;
+        }
+
+        /* 2열: 환자 검색/발송 */
+        .send-col {
+            flex: 1;
+            min-width: 800px;
+            display: flex;
+            flex-direction: row; /* 가로 분할 */
+            gap: 16px;
+        }
+
+        /* 2분할 스타일 */
+        .history-side {
+            width: 440px; /* 380px에서 확장 */
+            background: white;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+            min-width: 400px; /* 최소 너비 보장 */
+        }
+
+        .history-list-side {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: auto; /* 가로 스크롤 허용 (테이블 잘림 방지) */
+        }
+
+
+        .search-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            min-width: 360px; /* 480px -> 400px -> 360px 축소 */
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+        }
+
+        .side-header {
+            padding: 16px 20px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+            background: white;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .search-section {
+            padding: 16px 20px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .search-container {
+            position: relative;
+            padding: 16px 20px;
+            background: white;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+        }
+
+        .search-input-wrapper input {
+            width: 100%;
+            padding: 12px 14px 12px 40px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            outline: none;
+            font-family: inherit;
+            transition: all 0.2s;
+            background: #f8fafc;
+        }
+
+        .search-input-wrapper input:focus {
+            border-color: #6366f1;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        .search-input-wrapper .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.5;
+            font-size: 16px;
+        }
+
+        .help-box {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: help;
+            display: flex;
+            align-items: center;
+        }
+
+        .help-icon {
+            opacity: 0.5;
+            font-size: 14px;
+            transition: opacity 0.2s;
+            background: #f1f5f9;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .help-icon:hover {
+            opacity: 1;
+            background: #e2e8f0;
+        }
+
+        .help-tooltip {
+            position: absolute;
+            top: calc(100% + 15px);
+            right: -5px;
+            background: #1e293b;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 12px;
+            width: 240px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            opacity: 0;
+            visibility: hidden;
+            z-index: 1001;
+            transform: translateY(-10px);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            line-height: 1.6;
+        }
+
+        .help-tooltip strong {
+            display: block;
+            margin-bottom: 6px;
+            color: #fcd34d;
+            font-size: 13px;
+        }
+
+        .help-tooltip::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            right: 11px;
+            width: 10px;
+            height: 10px;
+            background: #1e293b;
+            transform: rotate(45deg);
+        }
+
+        .help-box:hover .help-tooltip {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        /* 상세 검색 드롭다운 (골드 스탠다드) */
+        .search-dropdown {
+            position: absolute;
+            top: calc(100% - 10px);
+            left: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            display: none;
+            z-index: 1000;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+        }
+
+        .search-dropdown.show {
+            display: block;
+        }
+
+        .search-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background 0.1s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .search-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-item:hover, .search-item.active {
+            background: #f1f5f9;
+        }
+
+        .search-item .name-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .search-item .name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1e293b;
+        }
+
+        .search-item .meta {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .search-item .phone {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .selected-header {
+            padding: 12px 20px 4px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-clear-all {
+            padding: 4px 8px;
+            font-size: 11px;
+            color: #ef4444;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .btn-clear-all:hover {
+            background: #fef2f2;
+        }
+
+        .patient-results {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 20px;
+        }
+
+        .patient-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .patient-row:hover {
+            border-color: #c7d2fe;
+            background: #fafafe;
+        }
+
+        .patient-row.selected {
+            border-color: #6366f1;
+            background: #eef2ff;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+        }
+
+        .patient-row .check {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #cbd5e1;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .patient-row.selected .check {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: white;
+        }
+
+        .patient-row .btn-remove {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 14px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .patient-row .btn-remove:hover {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        .patient-info {
+            flex: 1;
+        }
+
+        .patient-info .name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1e293b;
+        }
+
+        .patient-info .meta {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        /* 필터 버튼 스타일 */
+        .filter-buttons {
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        .filter-btn {
+            flex: 1;
+            padding: 8px 4px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .filter-btn:hover {
+            background: #f1f5f9;
+            color: #6366f1;
+            border-color: #6366f1;
+        }
+        .filter-btn.active {
+            background: #eef2ff;
+            color: #6366f1;
+            border-color: #6366f1;
+            box-shadow: 0 2px 4px rgba(99, 102, 241, 0.1);
+        }
+
+        /* 변수 입력 영역 */
+        .variable-section {
+            padding: 16px 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .variable-section h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin: 0 0 10px;
+        }
+
+        .var-input-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .var-input-row label {
+            font-size: 12px;
+            color: #64748b;
+            min-width: 70px;
+            font-weight: 500;
+        }
+
+        .var-input-row input {
+            flex: 1;
+            padding: 7px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .var-input-row input:focus {
+            border-color: #6366f1;
+        }
+
+        /* 발송 버튼 영역 */
+        .send-action {
+            padding: 16px 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .selected-count {
+            font-size: 13px;
+            color: #64748b;
+            flex: 1;
+        }
+
+        .selected-count strong {
+            color: #6366f1;
+            font-weight: 700;
+        }
+
+        .send-btn {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* 3열: 미리보기 + 이력 */
+        .preview-col {
+            width: 420px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+        }
+
+        .preview-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* iPhone 프레임 */
+        .iphone-frame {
+            width: 340px;
+            height: 580px;
+            background: #1e293b;
+            border-radius: 40px;
+            padding: 12px;
+            position: relative;
+            box-shadow: 0 15px 40px -10px rgba(0, 0, 0, 0.3);
+            border: 3px solid #334155;
+            flex-shrink: 0;
+        }
+
+        .iphone-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 22px;
+            background: #1e293b;
+            border-bottom-left-radius: 14px;
+            border-bottom-right-radius: 14px;
+            z-index: 10;
+        }
+
+        .iphone-screen {
+            width: 100%;
+            height: 100%;
+            background: #b2c7da;
+            border-radius: 30px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .kakao-header {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(4px);
+            padding: 34px 14px 10px;
+            font-size: 13px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .kakao-content {
+            flex: 1;
+            padding: 14px 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .kakao-date {
+            align-self: center;
+            background: rgba(0, 0, 0, 0.1);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 10px;
+        }
+
+        .kakao-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 7px;
+        }
+
+        .kakao-profile {
+            width: 32px;
+            height: 32px;
+            background: #fee500;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 9px;
+            color: #3f3035;
+            flex-shrink: 0;
+        }
+
+        .kakao-bubble-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            max-width: 85%;
+        }
+
+        .kakao-name {
+            font-size: 10px;
+            color: #555;
+            margin-bottom: 3px;
+            margin-left: 2px;
+        }
+
+        .kakao-bubble {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            font-size: 11.5px;
+            line-height: 1.5;
+            letter-spacing: -0.02em;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            color: #1a1a1a;
+            word-break: keep-all;
+            overflow-wrap: anywhere;
+        }
+
+        .alimtalk-header {
+            background: #fee500;
+            padding: 8px 12px;
+            font-weight: bold;
+            font-size: 10px;
+            color: #1a1a1a;
+        }
+
+        .alimtalk-body {
+            padding: 12px 14px;
+        }
+
+        .alimtalk-body .preview-text {
+            white-space: pre-wrap;
+            font-size: 11px;
+            line-height: 1.55;
+        }
+
+        .alimtalk-buttons {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .alimtalk-buttons button {
+            width: 100%;
+            padding: 7px;
+            background: #f1f5f9;
+            border: none;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 500;
+            color: #475569;
+            cursor: default;
+            font-family: inherit;
+        }
+
+        .kakao-time {
+            font-size: 9px;
+            color: #555;
+            margin-left: 5px;
+            align-self: flex-end;
+            white-space: nowrap;
+        }
+
+        /* 이력 영역 */
+        /* 이력 영역 (사이드바 버전) */
+        .history-list-side {
+            flex: 1;
+            overflow-y: auto;
+            background: white;
+        }
+
+        .history-header {
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .history-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 12px;
+        }
+
+        .history-row .h-name {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .history-row .h-template {
+            color: #64748b;
+            font-size: 11px;
+        }
+
+        .history-row .h-time {
+            color: #94a3b8;
+            font-size: 11px;
+        }
+
+        .history-row .h-status {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .h-status.success { background: #dcfce7; color: #15803d; }
+        .h-status.failed { background: #fee2e2; color: #b91c1c; }
+
+        /* 이력 조회 하이라이트 */
+        .history-table tbody tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .history-table tbody tr:hover {
+            background: #f8fafc;
+        }
+        .history-table tbody tr.active {
+            background: #eef2ff !important;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .empty-state .icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        /* 결과 토스트 */
+        .result-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 14px;
+            padding: 16px 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            z-index: 9999;
+            display: none;
+            min-width: 300px;
+            border-left: 5px solid #10b981;
+            animation: slideIn 0.3s ease;
+        }
+
+        .result-toast.error {
+            border-left-color: #ef4444;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .result-toast h4 {
+            margin: 0 0 6px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .result-toast p {
+            margin: 0;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        /* 로딩 스피너 */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .sms-time {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            align-self: center;
+        }
+
+        /* 상세 내역 테이블 스타일 (이력 영역 교체용) */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .history-table th {
+            position: sticky;
+            top: 0;
+            background: #f8fafc;
+            padding: 8px;
+            text-align: left;
+            border-bottom: 2px solid #e2e8f0;
+            color: #64748b;
+            z-index: 10;
+        }
+        .history-table td {
+            padding: 8px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .type-tag {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 11px;
+        }
+
+        /* 템플릿 동기화 버튼 및 상태 */
+        .sync-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .sync-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .sync-status {
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 8px;
+            min-height: 18px;
+        }
+
+        /* 날짜 선택기 특화 스타일 */
+        .rest-date-container {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .rest-date-mode {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 10px;
+            background: #f1f5f9;
+            padding: 3px;
+            border-radius: 8px;
+        }
+
+        .rest-mode-btn {
+            flex: 1;
+            padding: 5px;
+            font-size: 11px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+
+        .rest-mode-btn.active {
+            background: white;
+            color: #6366f1;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .date-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .date-input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .date-input-group span {
+            font-size: 12px;
+            color: #94a3b8;
+            min-width: 40px;
+        }
+
+        .date-input-group input[type="date"] {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            background: white;
+        }
+
+        .recent-booking-info {
+            font-size: 11px;
+            color: #6366f1;
+            background: #eef2ff;
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-top: 4px;
+            display: none;
+            align-items: center;
+            gap: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main-container">
+        <!-- 1열: 템플릿 선택 -->
+        <div class="template-col">
+            <div class="col-header">
+                <div class="mode-container">
+                    <div class="mode-tab active" onclick="switchMode('alimtalk')">알림톡</div>
+                    <div class="mode-tab" onclick="switchMode('bmm')">브랜드메시지</div>
+                    <div class="mode-tab" onclick="switchMode('sms')">문자(SMS)</div>
+                </div>
+                <h2 id="template-title">📲 알림톡 발송</h2>
+                <p id="template-desc">카카오 알림톡 발송 전용 창구</p>
+            </div>
+
+            <div class="template-body">
+                <!-- 알림톡 폼 -->
+                <div id="alimtalk-form">
+                    <div class="template-select-wrapper">
+                        <label>템플릿 선택</label>
+                        <select id="template-select" onchange="onTemplateChange()">
+                            <option value="">—— 템플릿을 선택하세요 ——</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 브랜드 메시지 폼 -->
+                <div id="bmm-form" style="display: none;">
+                    <div class="template-select-wrapper">
+                        <label>브랜드 메시지 선택</label>
+                        <select id="bmm-select" onchange="onTemplateChange()">
+                            <option value="">—— 메시지를 선택하세요 ——</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="template-details" style="display: none;">
+                    <div class="template-content-box" id="template-content"></div>
+                    <div class="template-buttons-preview" id="template-buttons"></div>
+                    <div class="template-info" id="template-info"></div>
+                </div>
+
+                <div id="no-template" class="empty-state">
+                    <div class="icon">📋</div>
+                    <p>좌측에서 템플릿을 선택하면<br>내용이 여기에 표시됩니다.</p>
+                </div>
+
+                <!-- SMS 폼 -->
+                <div id="sms-form" style="display: none;">
+                    <div class="template-select-wrapper">
+                        <label>메시지 내용</label>
+                        <textarea id="sms-message" class="sms-textarea" placeholder="보낼 내용을 화력해 주세요..."
+                            oninput="updateSMSPreview()"></textarea>
+                    </div>
+                    <div class="byte-info" id="byte-info">
+                        <span id="sms-type-label">SMS</span>
+                        <span><strong id="byte-count">0</strong> / 90 bytes</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: auto; padding-top: 20px;">
+                    <button class="sync-btn" onclick="syncTemplates()">
+                        🔄 SENS 템플릿 동기화
+                    </button>
+                    <div id="sync-status" class="sync-status" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2열: 중앙 분할 영역 (이력 + 검색) -->
+        <div class="send-col" id="send-col">
+            <!-- 좌측: 최근 발송 이력 -->
+            <div class="history-side">
+                <div class="side-header">
+                    <span>📜 최근 발송 이력</span>
+                </div>
+                <div id="history-list" class="history-list-side">
+                    <div class="empty-state" style="padding:20px;">
+                        <p>이력을 불러오는 중...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 우측: 환자 검색/발송 -->
+            <div class="search-side">
+                <div class="search-container">
+                    <div class="search-input-wrapper">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="patient-search" placeholder="환자 검색 (이름, 차트번호, 전화번호)" autocomplete="off" style="padding-right: 45px;">
+                        <div class="help-box">
+                            <span class="help-icon">?</span>
+                            <div class="help-tooltip">
+                                <strong>💡 검색창 전용 단축키</strong>
+                                <p>'/전체' 또는 '/all' 입력 시 시스템에 등록된 모든 환자를 한 번에 발송 대상으로 추가할 수 있습니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="search-dropdown" class="search-dropdown"></div>
+                    
+                    <!-- 필터 버튼 추가 -->
+                    <div class="filter-buttons">
+                        <button class="filter-btn" onclick="filterPatients('all', this)">전체</button>
+                        <button class="filter-btn" onclick="filterPatients(6, this)">6개월</button>
+                        <button class="filter-btn" onclick="filterPatients(3, this)">3개월</button>
+                        <button class="filter-btn" onclick="filterPatients(1, this)">1개월</button>
+                    </div>
+                </div>
+
+                <div class="selected-header">
+                    <span>선택된 발송 대상</span>
+                    <span class="btn-clear-all" onclick="clearSelectedPatients()">전체 삭제</span>
+                </div>
+
+                <div class="patient-results" id="patient-results">
+                    <div class="empty-state">
+                        <div class="icon">👤</div>
+                        <p>위의 검색창에서 환자를 검색하여<br>발송 대상에 추가하세요.</p>
+                    </div>
+                </div>
+
+                <!-- 변수 입력 -->
+                <div class="variable-section" id="variable-section" style="display:none;">
+                    <h4>📝 변수 입력</h4>
+                    <div id="variable-inputs"></div>
+                </div>
+
+                <!-- 발송 버튼 -->
+                <div class="send-action">
+                    <div class="selected-count">
+                        선택: <strong id="selected-count-num">0</strong>명
+                    </div>
+                    <button class="send-btn" id="send-btn" onclick="sendAlimTalk()" disabled>
+                        📲 알림톡 발송
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3열: 미리보기 + 이력 -->
+        <div class="preview-col">
+            <div class="preview-area">
+                <div style="margin-bottom:12px; text-align:center; position: relative; width: 100%;">
+                    <div id="preview-title-main" style="font-size:14px; font-weight:600; color:#1e293b;">실시간 미리보기</div>
+                    <div id="preview-title-sub" style="font-size:11px; color:#94a3b8;">환자에게 전송되는 실제 화면</div>
+                    <button id="btn-reset-preview" onclick="resetPreview()" style="display:none; position:absolute; right:0; top:50%; transform:translateY(-50%); background:#f1f5f9; border:none; border-radius:6px; padding:4px 8px; font-size:11px; color:#6366f1; cursor:pointer;">✕ 닫기</button>
+                </div>
+                <div class="iphone-frame">
+                    <div class="iphone-notch"></div>
+                    <div class="iphone-screen">
+                        <div class="kakao-header">
+                            <span id="iphone-clock">9:41</span>
+                            <div style="display:flex;gap:4px;">
+                                <div style="width:4px;height:4px;background:#000;border-radius:50%;opacity:.2;"></div>
+                                <div style="width:4px;height:4px;background:#000;border-radius:50%;opacity:.2;"></div>
+                            </div>
+                        </div>
+                        <div class="kakao-content">
+                            <div class="kakao-date" id="preview-date">오늘</div>
+                            <div class="kakao-row">
+                                <div class="kakao-profile">신방</div>
+                                <div class="kakao-bubble-container">
+                                    <div class="kakao-name">신방한의원</div>
+                                    <div class="kakao-bubble">
+                                        <div class="alimtalk-header">알림톡 도착</div>
+                                        <div class="alimtalk-body">
+                                            <div class="preview-text" id="preview-text">
+                                                템플릿을 선택하면
+미리보기가 표시됩니다.</div>
+                                            <div class="alimtalk-buttons" id="preview-buttons"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="kakao-time" id="preview-time">오후 2:30</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 결과 토스트 -->
+    <div class="result-toast" id="result-toast">
+        <h4 id="toast-title"></h4>
+        <p id="toast-message"></p>
+    </div>
+
+    <script>
+        // ==========================================
+        // 전역 상태
+        // ==========================================
+        let templates = [];
+        let selectedTemplate = null;
+        let selectedPatients = []; // 선택된 발송 대상 목록
+        let searchResults = [];     // 현재 검색 결과 (드롭다운용)
+        let templateVariables = [];
+        let currentFocus = -1;      // 검색 드롭다운 포커스 인덱스
+        let searchTimeout = null;   // 검색 타이머용
+        let currentMode = 'alimtalk'; // 'alimtalk' or 'sms'
+        let historyData = [];       // 최근 발송 이력 데이터 캐시
+        let selectedHistoryIdx = -1; // 현재 조회 중인 이력 인덱스
+        let patientRecentBooking = null; // 선택된 환자의 최신 예약 정보 캐시
+
+        // ==========================================
+        let selectedIndex = -1; // 검색 결과 키보드 선택 인덱스
+
+        // 초기화
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTemplates();
+            loadHistory();
+            updatePreviewDate();
+            setInterval(updatePreviewDate, 60000); // 1분마다 시간 갱신
+
+            // 검색 입력 이벤트
+            const searchInput = document.getElementById('patient-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', onSearchInput);
+                searchInput.addEventListener('keydown', onSearchKeyDown);
+            }
+
+            // 외부 클릭 시 드롭다운 닫기
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-container')) {
+                    hideSearchDropdown();
+                }
+            });
+
+            // Socket.io 실시간 이벤트 리스너 추가
+            if (typeof io !== 'undefined') {
+                const socket = io();
+                console.log('[Socket.io] 서버와 연결 시도 중...');
+                
+                socket.on('system:event', (event) => {
+                    console.log('[Socket.io] 실시간 이벤트 수신:', event);
+                    if (event.type === 'msg:sms' || event.type === 'msg:alimtalk') {
+                        console.log('[Socket.io] 발송 감지: 이력 목록을 새로고침합니다.');
+                        loadHistory();
+                    }
+                });
+            } else {
+                console.warn('[Socket.io] 라이브러리를 로드할 수 없습니다. 실시간 갱신이 제한됩니다.');
+            }
+        });
+
+
+        function updatePreviewDate() {
+            const now = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            const dateEl = document.getElementById('preview-date');
+            if (dateEl) dateEl.textContent = now.toLocaleDateString('ko-KR', options);
+
+            const hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? '오후' : '오전';
+            const h12 = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+            const timeEl = document.getElementById('preview-time');
+            if (timeEl) timeEl.textContent = `${ampm} ${h12}:${minutes}`;
+
+            // 상단 아이폰 시계 (고정 24시간제 또는 12시간제 - 여기서는 심플하게 시:분)
+            const clockEl = document.getElementById('iphone-clock');
+            if (clockEl) clockEl.textContent = `${hours}:${minutes}`;
+        }
+
+        // ==========================================
+        // 모드 전환
+        // ==========================================
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // 탭 스타일 업데이트
+            document.querySelectorAll('.mode-tab').forEach(tab => {
+                const label = mode === 'alimtalk' ? '알림톡' : (mode === 'bmm' ? '브랜드메시지' : '문자');
+                tab.classList.toggle('active', tab.textContent.includes(label));
+            });
+
+            // 제목 및 설명 업데이트
+            if (mode === 'alimtalk') {
+                document.getElementById('template-title').textContent = '📲 알림톡 발송';
+                document.getElementById('template-desc').textContent = '알림톡 발송';
+            } else if (mode === 'bmm') {
+                document.getElementById('template-title').textContent = '🏷️ 브랜드메시지 발송';
+                document.getElementById('template-desc').textContent = '광고성 메시지';
+            } else {
+                document.getElementById('template-title').textContent = '✉️ 문자(SMS/LMS) 발송';
+                document.getElementById('template-desc').textContent = '문자 메시지';
+            }
+
+            // 폼 전환
+            document.getElementById('alimtalk-form').style.display = mode === 'alimtalk' ? 'block' : 'none';
+            document.getElementById('bmm-form').style.display = mode === 'bmm' ? 'block' : 'none';
+            document.getElementById('sms-form').style.display = mode === 'sms' ? 'block' : 'none';
+            
+            // 변수 섹션 (SMS일 때는 숨김)
+            document.getElementById('variable-section').style.display = (mode !== 'sms' && templateVariables.length > 0) ? 'block' : 'none';
+
+            // 동기화 버튼 숨김/표시
+            const syncBtnWrapper = document.querySelector('.sync-btn')?.parentElement;
+            if (syncBtnWrapper) syncBtnWrapper.style.display = (mode === 'alimtalk' || mode === 'bmm') ? 'block' : 'none';
+
+            // 발송 버튼 텍스트 변경
+            const sendBtn = document.getElementById('send-btn');
+            sendBtn.innerHTML = mode === 'alimtalk' ? '📲 알림톡 발송' : (mode === 'bmm' ? '🏷️ 브랜드메시지 발송' : '✉️ 문자 발송');
+
+            // 템플릿 목록 다시 렌더링
+            renderTemplateSelect();
+            
+            // 상세 영역 초기화
+            onTemplateChange();
+
+            // 미리보기 업데이트
+            updatePreview();
+            updateSendButton();
+        }
+
+        function getByteCount(str) {
+            let count = 0;
+            for (let i = 0; i < str.length; i++) {
+                const charCode = str.charCodeAt(i);
+                if (charCode <= 127) count += 1;
+                else count += 2;
+            }
+            return count;
+        }
+
+        function updateSMSPreview() {
+            const text = document.getElementById('sms-message').value;
+            const bytes = getByteCount(text);
+            const byteCountEl = document.getElementById('byte-count');
+            const typeLabel = document.getElementById('sms-type-label');
+            const infoEl = document.getElementById('byte-info');
+
+            byteCountEl.textContent = bytes;
+            
+            if (bytes > 90) {
+                typeLabel.textContent = 'LMS';
+                infoEl.classList.add('over-limit');
+            } else {
+                typeLabel.textContent = 'SMS';
+                infoEl.classList.remove('over-limit');
+            }
+
+            updatePreview();
+            updateSendButton();
+        }
+
+        // 날짜 포맷팅: M월 D일 (요일)
+        function formatDateWithDay(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            const m = d.getMonth() + 1;
+            const day = d.getDate();
+            const week = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+            return `${m}월 ${day}일 (${week})`;
+        }
+
+        // ==========================================
+        // 템플릿 로드 및 선택
+        // ==========================================
+        async function loadTemplates() {
+            try {
+                const res = await fetch('/api/alltalk/templates');
+                const result = await res.json();
+                if (result.success) {
+                    templates = result.data.filter(t => t.sensTemplateCode);
+                    renderTemplateSelect();
+                }
+            } catch (error) {
+                console.error('템플릿 로드 실패:', error);
+            }
+        }
+
+        // 템플릿 상태 판별 유틸리티 (골드 스탠다드 로직)
+        function getTemplateStatusInfo(t) {
+            const s = (t.sensTemplateStatus || '').toUpperCase();
+            
+            // 브랜드 메시지는 검수 상태 필드가 없으므로 템플릿 상태만 봅니다.
+            if (t.type === 'bmm') {
+                if (s === 'ACTIVE') return { emoji: '🟢', text: '정상', cls: 'active' };
+                if (s === 'READY') return { emoji: '🟡', text: '대기중', cls: 'ready' };
+                return { emoji: '🔴', text: '알수없음', cls: 'reject' };
+            }
+
+            const ins = (t.sensStatus || '').toUpperCase();
+            
+            // 검수 상태가 '완료'(APPROVE/COMPLETE)이면 기본적으로 초록불 대상
+            // 단, 템플릿 상태가 '정상'(ACTIVE), '등록완료'(REGISTERED), '대기'(READY - 일부 케이스)일 때 초록불
+            const isInspectionComplete = (ins === 'APPROVE' || ins === 'COMPLETE');
+            const isTemplateGood = (s === 'ACTIVE' || s === 'REGISTERED' || s === 'READY');
+            
+            const isGreen = isInspectionComplete && isTemplateGood;
+            
+            if (isGreen) {
+                // 상단 아이콘 및 상세 배지 표시용
+                let text = '정상';
+                if (s === 'REGISTERED' || s === 'READY') text = '등록완료'; 
+                return { emoji: '🟢', text: text, cls: 'active' };
+            } else {
+                return { emoji: '🟡', text: '대기중', cls: 'ready' };
+            }
+        }
+
+        function renderTemplateSelect() {
+            const selectId = currentMode === 'bmm' ? 'bmm-select' : 'template-select';
+            const select = document.getElementById(selectId);
+            if (!select) return;
+
+            select.innerHTML = `<option value="">—— ${currentMode === 'bmm' ? '메시지' : '템플릿'}를 선택하세요 ——</option>`;
+
+            // 모드에 맞는 템플릿 필터링
+            const filtered = templates.filter(t => {
+                if (currentMode === 'bmm') return t.type === 'bmm';
+                return !t.type || t.type !== 'bmm'; // 기본은 알림톡
+            });
+
+            // 정상(ACTIVE), 등록완료(REGISTERED), 대기중(READY) 상태만 표시
+            const sorted = filtered.filter(t => {
+                const s = (t.sensTemplateStatus || '').toUpperCase();
+                const ins = (t.sensStatus || '').toUpperCase();
+                return (s === 'ACTIVE' || s === 'READY' || s === 'REGISTERED' || currentMode === 'bmm') && ins !== 'REJECT';
+            }).sort((a, b) => (a.title || '').localeCompare(b.title || '', 'ko'));
+
+            sorted.forEach(t => {
+                const { emoji } = getTemplateStatusInfo(t);
+                const opt = document.createElement('option');
+                opt.value = t.sensTemplateCode;
+                if (currentMode === 'bmm') {
+                    opt.textContent = `${emoji} ${t.title}`;
+                } else {
+                    opt.textContent = `${emoji} [${t.sensTemplateCode}] ${t.title}`;
+                }
+                select.appendChild(opt);
+            });
+        }
+
+        function onTemplateChange() {
+            const selectId = currentMode === 'bmm' ? 'bmm-select' : 'template-select';
+            const code = document.getElementById(selectId)?.value;
+            const detailsEl = document.getElementById('template-details');
+            const noTemplateEl = document.getElementById('no-template');
+
+            if (!code) {
+                selectedTemplate = null;
+                detailsEl.style.display = 'none';
+                noTemplateEl.style.display = 'block';
+                updatePreview();
+                updateVariableSection();
+                updateSendButton();
+                return;
+            }
+
+            selectedTemplate = templates.find(t => t.sensTemplateCode === code);
+            detailsEl.style.display = 'block';
+            noTemplateEl.style.display = 'none';
+
+            // 본문 내용
+            const content = selectedTemplate.sensContent || (selectedTemplate.steps && selectedTemplate.steps[0] ? selectedTemplate.steps[0].content : '');
+            document.getElementById('template-content').innerHTML = content.replace(/#\{([^}]+)\}/g, '<span class="var-highlight">#{$1}</span>');
+
+            // 버튼 및 정보
+            const buttons = (selectedTemplate.steps && selectedTemplate.steps[0]) ? selectedTemplate.steps[0].buttons || [] : [];
+            document.getElementById('template-buttons').innerHTML = buttons.map(b => {
+                const url = b.linkMobile || b.linkPc || b.url || '#';
+                return `<a href="${url}" target="_blank" class="template-btn-preview" style="text-decoration:none; display: block; cursor: pointer;">${b.name}</a>`;
+            }).join('');
+            
+            const { text: statusText, cls: statusClass } = getTemplateStatusInfo(selectedTemplate);
+
+            document.getElementById('template-info').innerHTML = `
+                <span class="info-badge ${statusClass}">${statusText}</span>
+                <span class="info-badge">${selectedTemplate.sensTemplateCode}</span>
+            `;
+
+            extractVariables(content);
+            updateVariableSection();
+
+            // 만약 rest02 템플릿으로 변경되었고, 이미 선택된 환자가 있다면 최근 예약 조회
+            if (code === 'rest02' && selectedPatients.length > 0) {
+                fetchRecentBooking(selectedPatients[0].chartNo);
+            }
+
+            updatePreview();
+            updateSendButton();
+        }
+
+        function extractVariables(content) {
+            const regex = /#\{([^}]+)\}/g;
+            const vars = new Set();
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+                vars.add(match[1]);
+            }
+            templateVariables = [...vars];
+        }
+
+        function updateVariableSection() {
+            const section = document.getElementById('variable-section');
+            const container = document.getElementById('variable-inputs');
+            const autoVars = ['이름', 'name', '차트번호', 'date', '예약날짜', '예약일시'];
+            const manualVars = templateVariables.filter(v => !autoVars.includes(v));
+
+            if ((manualVars.length === 0 && !['rest01', 'rest02'].includes(selectedTemplate?.sensTemplateCode)) || !selectedTemplate || currentMode === 'sms') {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+
+            // 휴진 관련 템플릿 특화 UI (rest01, rest02)
+            const tCode = selectedTemplate?.sensTemplateCode;
+            if (tCode === 'rest01' || tCode === 'rest02') {
+                console.log(`[AllTalk] 특화 UI 렌더링 시작: ${tCode}`);
+                let html = '';
+                
+                // 1. 기존 예약일시 (rest02 전용)
+                if (tCode === 'rest02') {
+                    html += `
+                        <div class="var-input-row" style="align-items: flex-start;">
+                            <label>#{기존예약일시}</label>
+                            <div style="flex:1;">
+                                <input type="text" id="input-past-booking" data-var="기존예약일시" class="var-input" placeholder="예: 3월 26일 (목) 14:30" oninput="updatePreview()">
+                                <div id="recent-booking-badge" class="recent-booking-info">
+                                    <span>🔍 최신 예약: </span><strong id="recent-booking-text">-</strong>
+                                    <button onclick="applyRecentBooking()" style="margin-left:auto; background:#6366f1; color:white; border:none; border-radius:4px; padding:2px 6px; font-size:10px; cursor:pointer;">적용</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 2. 휴진 날짜 (공통)
+                const dateVarName = (tCode === 'rest01') ? '날짜' : '휴진날짜';
+                html += `
+                    <div class="var-input-row" style="align-items: flex-start;">
+                        <label>#{${dateVarName}}</label>
+                        <div class="rest-date-container" style="flex:1;">
+                            <div class="rest-date-mode">
+                                <div id="mode-single" class="rest-mode-btn active" onclick="setRestDateMode('single')">특정일</div>
+                                <div id="mode-range" class="rest-mode-btn" onclick="setRestDateMode('range')">기간 선택</div>
+                            </div>
+                            <div class="date-inputs">
+                                <div class="date-input-group">
+                                    <span id="label-start" style="min-width:40px;">날짜</span>
+                                    <input type="date" id="rest-start-date" onchange="onRestDateChange()">
+                                </div>
+                                <div id="range-end-group" class="date-input-group" style="display:none;">
+                                    <span style="min-width:40px;">~ 종료</span>
+                                    <input type="date" id="rest-end-date" onchange="onRestDateChange()">
+                                </div>
+                            </div>
+                            <!-- 실제 변수로 전달될 숨겨진 입력창 -->
+                            <input type="hidden" data-var="${dateVarName}" class="var-input" id="hidden-rest-date">
+                        </div>
+                    </div>
+                `;
+
+                // 3. 휴진 사유 (공통)
+                html += `
+                    <div class="var-input-row">
+                        <label>#{휴진사유}</label>
+                        <input type="text" data-var="휴진사유" class="var-input" placeholder="예: 경조사로 인한 휴진" oninput="updatePreview()">
+                    </div>
+                `;
+
+                container.innerHTML = html;
+
+                // 초기값 설정 (오늘로)
+                const today = new Date().toISOString().split('T')[0];
+                const startInput = document.getElementById('rest-start-date');
+                const endInput = document.getElementById('rest-end-date');
+                if (startInput) startInput.value = today;
+                if (endInput) endInput.value = today;
+                
+                // 엘리먼트 렌더 완료 후 약간의 지연을 주어 초기화 (DOM 생성 보장)
+                setTimeout(() => {
+                    onRestDateChange();
+                    if (tCode === 'rest02') updateRecentBookingUI();
+                }, 50);
+
+            } else {
+                // 일반 템플릿용 자동 생성
+                container.innerHTML = manualVars.map(v => `
+                    <div class="var-input-row">
+                        <label>#{${v}}</label>
+                        <input type="text" data-var="${v}" class="var-input" placeholder="${v} 입력" oninput="updatePreview()">
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 휴진 날짜 관련 제어 함수
+        let currentRestDateMode = 'single';
+        function setRestDateMode(mode) {
+            currentRestDateMode = mode;
+            document.getElementById('mode-single').classList.toggle('active', mode === 'single');
+            document.getElementById('mode-range').classList.toggle('active', mode === 'range');
+            document.getElementById('range-end-group').style.display = (mode === 'range') ? 'flex' : 'none';
+            document.getElementById('label-start').textContent = (mode === 'range') ? '시작' : '날짜';
+            onRestDateChange();
+        }
+
+        function onRestDateChange() {
+            const startStr = document.getElementById('rest-start-date').value;
+            const endStr = document.getElementById('rest-end-date').value;
+            const hiddenInput = document.getElementById('hidden-rest-date');
+
+            if (currentRestDateMode === 'single') {
+                hiddenInput.value = formatDateWithDay(startStr);
+            } else {
+                if (startStr && endStr) {
+                    hiddenInput.value = `${formatDateWithDay(startStr)} ~ ${formatDateWithDay(endStr)}`;
+                } else {
+                    hiddenInput.value = formatDateWithDay(startStr) || '';
+                }
+            }
+            updatePreview();
+        }
+
+        // 최근 예약 정보 조회 및 적용
+        function updateRecentBookingUI() {
+            const badge = document.getElementById('recent-booking-badge');
+            const textEl = document.getElementById('recent-booking-text');
+            
+            if (!badge || !textEl) {
+                console.warn('[AllTalk] 예약 알림 배지 엘리먼트를 찾을 수 없습니다.');
+                return;
+            }
+
+            if (patientRecentBooking) {
+                const formatted = `${formatDateWithDay(patientRecentBooking.date)} ${patientRecentBooking.time.substring(0, 5)}`;
+                console.log(`[AllTalk] 배지 업데이트: ${formatted}`);
+                textEl.textContent = formatted;
+                badge.style.display = 'flex';
+            } else {
+                console.log('[AllTalk] 표시할 최신 예약 정보 없음 (배지 숨김)');
+                badge.style.display = 'none';
+            }
+        }
+
+        function applyRecentBooking() {
+            const input = document.getElementById('input-past-booking');
+            if (input && patientRecentBooking) {
+                const formatted = `${formatDateWithDay(patientRecentBooking.date)} ${patientRecentBooking.time.substring(0, 5)}`;
+                input.value = formatted;
+                updatePreview();
+                console.log(`[AllTalk] 예약 정보 적용됨: ${formatted}`);
+            }
+        }
+
+        async function fetchRecentBooking(chartNo) {
+            if (!chartNo) { 
+                console.warn('[AllTalk] 차트 번호가 없어 조회를 생략합니다.');
+                patientRecentBooking = null; 
+                updateRecentBookingUI();
+                return; 
+            }
+            
+            console.log(`[AllTalk] 최신 예약 조회 요청: chartNo=${chartNo}`);
+            try {
+                const res = await fetch(`/api/alltalk/recent-booking/${chartNo}`);
+                const result = await res.json();
+                console.log('[AllTalk] 조회 응답:', result);
+                
+                if (result.success && result.data) {
+                    patientRecentBooking = result.data;
+                } else {
+                    console.log('[AllTalk] 해당 환자의 향후 예약 내역이 없습니다.');
+                    patientRecentBooking = null;
+                }
+                updateRecentBookingUI();
+            } catch (error) {
+                console.error('[AllTalk] 최근 예약 조회 중 오류 발생:', error);
+                patientRecentBooking = null;
+                updateRecentBookingUI();
+            }
+        }
+
+        // 전체 환자 선택 (단축키용)
+        async function selectAllPatients() {
+            try {
+                const res = await fetch('/api/patients');
+                const result = await res.json();
+                if (result.success) {
+                    const allPatients = result.data;
+                    // 기존 목록에 없는 환자만 추가
+                    let addedCount = 0;
+                    allPatients.forEach(p => {
+                        if (!selectedPatients.some(sp => sp.id === p.id)) {
+                            // 1. 문자 수신 거부 환자는 무조건 제외
+                            if (p.rejectSms === 1 || p.rejectSms === true) return;
+                            
+                            // 2. 알림톡 모드일 경우 카카오톡 사용 안 함 환자 제외
+                            if (currentMode === 'alimtalk' && (p.hasKakao === 0 || p.hasKakao === false)) return;
+
+                            selectedPatients.push(p);
+                            addedCount++;
+                        }
+                    });
+                    renderSelectedPatients();
+                    showToast('✅ 전체 선택 완료', `총 ${allPatients.length}명의 환자가 발송 대상으로 설정되었습니다.`);
+                }
+            } catch (error) {
+                console.error('전체 환자 목록 로드 실패:', error);
+                showToast('❌ 오류', '전체 환자 목록을 불러오는데 실패했습니다.', true);
+            }
+        }
+
+        // 기간별 환자 필터링 및 자동 선택
+        async function filterPatients(months, btn) {
+            // 버튼 활성화 표시
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+
+            showToast('⏳ 조회 중', `${months === 'all' ? '전체' : months + '개월'} 내원 환자를 검색 중입니다...`);
+            
+            try {
+                const res = await fetch(`/api/patients/filter?months=${months}`);
+                const result = await res.json();
+                
+                if (result.success) {
+                    const patients = result.data;
+                    if (patients.length === 0) {
+                        showToast('ℹ️ 안내', '해당 기간 내 내원한 환자가 없습니다.');
+                        return;
+                    }
+
+                    // 기존 선택 목록을 초기화하고 필터링된 환자들로 교체
+                    selectedPatients = [];
+                    let addedCount = 0;
+                    patients.forEach(p => {
+                        // 알림톡 모드일 경우 카카오톡 사용 안 함 환자 제외
+                        if (currentMode === 'alimtalk' && (p.hasKakao === 0 || p.hasKakao === false)) {
+                            return;
+                        }
+                        selectedPatients.push(p);
+                        addedCount++;
+                    });
+
+                    renderSelectedPatients();
+                    showToast('✅ 필터 적용 완료', `총 ${selectedPatients.length}명의 환자가 발송 대상으로 선택되었습니다.`);
+                } else {
+                    showToast('❌ 필터 실패', result.message || '오류 발생', true);
+                }
+            } catch (error) {
+                console.error('필터 조회 실패:', error);
+                showToast('❌ 오류', '데이터를 불러오는 중 오류가 발생했습니다.', true);
+            }
+        }
+
+        // ==========================================
+        // 환자 검색 및 선택
+        // ==========================================
+        function onSearchInput(e) {
+            const query = e.target.value.trim();
+            if (query.length < 1) { hideSearchDropdown(); return; }
+
+            // 전체 선택 단축키 체크 (/전체 또는 /all)
+            if (query === '/전체' || query === '/all') {
+                if (confirm('시스템에 등록된 전체 환자를 발송 대상으로 추가하시겠습니까?\n(환자 수가 많을 경우 다소 시간이 걸릴 수 있습니다.)')) {
+                    selectAllPatients();
+                    e.target.value = '';
+                    hideSearchDropdown();
+                }
+                return;
+            }
+
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(async () => {
+                const res = await fetch(`/api/patients/search?q=${encodeURIComponent(query)}`);
+                const result = await res.json();
+                if (result.success) {
+                    // 문자 수신 거부(rejectSms=1)인 환자는 명단에서 제외
+                    searchResults = result.data.filter(p => p.rejectSms !== 1 && p.rejectSms !== true);
+                    selectedIndex = (searchResults.length > 0) ? 0 : -1;
+                    showSearchDropdown(searchResults);
+                }
+            }, 200);
+        }
+
+        function showSearchDropdown(list) {
+            const dropdown = document.getElementById('search-dropdown');
+            dropdown.innerHTML = list.map((p, idx) => `
+                <div class="search-item ${idx === selectedIndex ? 'active' : ''}" onclick="addPatientToSelection(${idx})">
+                    <div class="name-box">
+                        <span class="name">${p.name}</span>
+                        <span class="meta">${p.chartNo || '-'}</span>
+                    </div>
+                    <span class="phone">${p.phone || '-'}</span>
+                </div>
+            `).join('');
+            dropdown.classList.add('show');
+            
+            // 활성 아이템으로 스크롤 케어
+            const activeItem = dropdown.querySelector('.search-item.active');
+            if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
+        }
+
+        function hideSearchDropdown() {
+            document.getElementById('search-dropdown').classList.remove('show');
+        }
+
+        function onSearchKeyDown(e) {
+            if (!searchResults.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = (selectedIndex + 1) % searchResults.length;
+                showSearchDropdown(searchResults);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = (selectedIndex - 1 + searchResults.length) % searchResults.length;
+                showSearchDropdown(searchResults);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedIndex >= 0) {
+                    addPatientToSelection(selectedIndex);
+                }
+            } else if (e.key === 'Escape') {
+                hideSearchDropdown();
+            }
+        }
+
+        function addPatientToSelection(idx) {
+            const p = searchResults[idx];
+            if (!p) return;
+
+            // 카카오톡 사용 안 함(hasKakao=0) 환자가 알림톡 모드에서 선택될 경우 경고
+            if (currentMode === 'alimtalk' && (p.hasKakao === 0 || p.hasKakao === false)) {
+                if (!confirm(`${p.name}님은 '카카오톡 사용 안 함'으로 설정된 환자입니다. 그래도 추가하시겠습니까?`)) {
+                    return;
+                }
+            }
+
+            if (!selectedPatients.some(sp => sp.id === p.id)) {
+                selectedPatients.push(p);
+                renderSelectedPatients();
+                
+                // rest02 템플릿이 선택되어 있다면 최근 예약 정보 조회
+                if (selectedTemplate?.sensTemplateCode === 'rest02') {
+                    fetchRecentBooking(p.chartNo);
+                }
+            }
+            document.getElementById('patient-search').value = '';
+            hideSearchDropdown();
+        }
+
+        function removePatient(id) {
+            selectedPatients = selectedPatients.filter(p => p.id !== id);
+            renderSelectedPatients();
+        }
+
+        function clearSelectedPatients() {
+            selectedPatients = [];
+            renderSelectedPatients();
+        }
+
+        function renderSelectedPatients() {
+            document.getElementById('selected-count-num').textContent = selectedPatients.length;
+            const container = document.getElementById('patient-results');
+            
+            if (selectedPatients.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">👤</div><p>환자를 검색하여 추가하세요.</p></div>';
+            } else {
+                container.innerHTML = selectedPatients.map(p => `
+                    <div class="patient-row selected">
+                        <div class="btn-remove" onclick="removePatient(${p.id})">✕</div>
+                        <div class="patient-info">
+                            <div class="name">${p.name}</div>
+                            <div class="meta">${p.chartNo || '-'} · ${p.phone || '-'}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            updatePreview();
+            updateSendButton();
+        }
+
+        // ==========================================
+        // 미리보기 및 발송 버튼
+        // ==========================================
+        function updatePreview() {
+            const screen = document.querySelector('.iphone-screen');
+            const textEl = document.getElementById('preview-text');
+            const btnsEl = document.getElementById('preview-buttons');
+            const bubble = document.querySelector('.kakao-bubble');
+            const profile = document.querySelector('.kakao-profile');
+            const nameLabel = document.querySelector('.kakao-name');
+            const header = document.querySelector('.kakao-header');
+            const alimtalkHeader = document.querySelector('.alimtalk-header');
+
+            // 이력 조회 모드인 경우
+            if (selectedHistoryIdx !== -1) {
+                const h = historyData[selectedHistoryIdx];
+                if (!h) return;
+
+                const isAlimtalk = (h.type === '알림톡');
+                const isSMS = (h.type === 'SMS' || h.type === '문자');
+                const isLMS = (h.type === 'LMS');
+
+                if (isAlimtalk) {
+                    screen.classList.remove('sms-mode');
+                    bubble.className = 'kakao-bubble';
+                    if (profile) profile.style.display = 'flex';
+                    if (nameLabel) nameLabel.style.display = 'block';
+                    header.style.background = 'rgba(255, 255, 255, 0.9)';
+                    if (alimtalkHeader) alimtalkHeader.textContent = '알림톡 도착';
+                    
+                    // 버튼 및 전문 복구 시도 (템플릿 코드 기반)
+                    if (h.templateCode) {
+                        const tmpl = templates.find(t => t.sensTemplateCode === h.templateCode);
+                        if (tmpl) {
+                            // 버튼 표시
+                            const buttons = (tmpl.steps && tmpl.steps[0]) ? tmpl.steps[0].buttons || [] : [];
+                            btnsEl.innerHTML = buttons.map(b => `<div class="template-btn-preview">${b.name}</div>`).join('');
+                            
+                            // 전문(Full Text) 표시: 로그된 내용이 단순 코드 형태일 경우 템플릿 원본 활용
+                            let finalContent = h.message || '';
+                            if (!finalContent || finalContent.startsWith('[') || finalContent.length < 20) {
+                                finalContent = tmpl.sensContent || '';
+                                // 변수 치환 (이력 데이터 기반)
+                                finalContent = finalContent.replace(/#\{(이름|name)\}/g, h.patientName || '#{이름}')
+                                                           .replace(/#\{차트번호\}/g, h.chartNo || '#{차트번호}');
+                            }
+                            textEl.textContent = finalContent;
+                        } else {
+                            btnsEl.innerHTML = '';
+                            textEl.textContent = h.message || '(내용 없음)';
+                        }
+                    } else {
+                        btnsEl.innerHTML = '';
+                        textEl.textContent = h.message || '(내용 없음)';
+                    }
+                } else {
+                    screen.classList.add('sms-mode');
+                    bubble.className = 'kakao-bubble sms-bubble' + (isLMS ? ' lms' : '');
+                    if (profile) profile.style.display = 'none';
+                    if (nameLabel) nameLabel.style.display = 'none';
+                    header.style.background = '#f4f4f4';
+                    if (alimtalkHeader) alimtalkHeader.textContent = (isLMS ? 'LMS' : 'SMS') + ' 도착';
+                    btnsEl.innerHTML = '';
+                    textEl.textContent = h.message || '(내용 없음)';
+                }
+                
+                // 조회 모드 UI 표시
+                document.getElementById('preview-title-main').textContent = '📜 발송 이력 조회';
+                document.getElementById('preview-title-main').style.color = '#6366f1';
+                document.getElementById('preview-title-sub').textContent = `${h.patientName} (${h.type}) - ${h.sentAt ? new Date(h.sentAt).toLocaleString() : ''}`;
+                document.getElementById('btn-reset-preview').style.display = 'block';
+                return;
+            }
+
+            // 실시간 미리보기 모드 (기존 로직)
+            document.getElementById('preview-title-main').textContent = '실시간 미리보기';
+            document.getElementById('preview-title-main').style.color = '#1e293b';
+            document.getElementById('preview-title-sub').textContent = '환자에게 전송되는 실제 화면';
+            document.getElementById('btn-reset-preview').style.display = 'none';
+
+            const p = selectedPatients[0] || { name: '#{이름}', chartNo: '#{차트번호}' };
+
+            if (currentMode === 'alimtalk' || currentMode === 'bmm') {
+                screen.classList.remove('sms-mode');
+                bubble.className = 'kakao-bubble';
+                if (profile) profile.style.display = 'flex';
+                if (nameLabel) nameLabel.style.display = 'block';
+                header.style.background = 'rgba(255, 255, 255, 0.9)';
+
+                if (!selectedTemplate) {
+                    textEl.textContent = '템플릿을 선택해 주세요.';
+                    btnsEl.innerHTML = '';
+                    return;
+                }
+
+                let content = selectedTemplate.sensContent || '';
+                if (alimtalkHeader) alimtalkHeader.textContent = currentMode === 'bmm' ? '브랜드메시지 도착' : '알림톡 도착';
+                const resDate = (patientRecentBooking) ? `${formatDateWithDay(patientRecentBooking.date)} ${patientRecentBooking.time.substring(0, 5)}` : (p.date || '#{예약날짜}');
+                
+                content = content.replace(/#\{(이름|name)\}/g, p.name)
+                                 .replace(/#\{(차트번호)\}/g, p.chartNo || '-')
+                                 .replace(/#\{(date|예약날짜|예약일시)\}/g, resDate);
+
+                document.querySelectorAll('.var-input').forEach(input => {
+                    content = content.replace(new RegExp(`#\\{${input.dataset.var}\\}`, 'g'), input.value || `#{${input.dataset.var}}`);
+                });
+                textEl.textContent = content;
+
+                const buttons = (selectedTemplate.steps && selectedTemplate.steps[0]) ? selectedTemplate.steps[0].buttons || [] : [];
+                btnsEl.innerHTML = buttons.map(b => `<div class="template-btn-preview">${b.name}</div>`).join('');
+            } else {
+                screen.classList.add('sms-mode');
+                const text = document.getElementById('sms-message').value || '메시지 내용을 입력하세요.';
+                const bytes = getByteCount(text);
+                bubble.className = 'kakao-bubble sms-bubble' + (bytes > 90 ? ' lms' : '');
+                if (profile) profile.style.display = 'none';
+                if (nameLabel) nameLabel.style.display = 'none';
+                header.style.background = '#f4f4f4';
+                
+                if (alimtalkHeader) alimtalkHeader.textContent = (bytes > 90 ? 'LMS' : 'SMS') + ' 도착';
+                
+                textEl.textContent = text;
+                btnsEl.innerHTML = '';
+            }
+        }
+
+        function updateSendButton() {
+            const btn = document.getElementById('send-btn');
+            const hasPatients = selectedPatients.length > 0;
+            if (currentMode === 'alimtalk' || currentMode === 'bmm') {
+                btn.disabled = !(selectedTemplate && hasPatients);
+            } else {
+                btn.disabled = !(document.getElementById('sms-message').value.trim() && hasPatients);
+            }
+        }
+
+        async function sendAlimTalk() {
+            if (selectedPatients.length === 0) return;
+            const btn = document.getElementById('send-btn');
+            const modeName = currentMode === 'alimtalk' ? '알림톡' : (currentMode === 'bmm' ? '브랜드메시지' : '문자');
+
+            if (!confirm(`${selectedPatients.length}명에게 ${modeName}를 발송하시겠습니까?`)) return;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> 발송 중...';
+
+            const patients = selectedPatients.map(p => ({
+                name: p.name,
+                chartNo: p.chartNo || '',
+                phone: (p.phone || '').replace(/[^0-9]/g, '')
+            }));
+
+            try {
+                let res;
+                if (currentMode === 'alimtalk' || currentMode === 'bmm') {
+                    const variables = {};
+                    document.querySelectorAll('.var-input').forEach(input => variables[input.dataset.var] = input.value);
+                    
+                    // 자동 치환 변수 추가
+                    if (patientRecentBooking) {
+                        const resDate = `${formatDateWithDay(patientRecentBooking.date)} ${patientRecentBooking.time.substring(0, 5)}`;
+                        variables['date'] = resDate;
+                        variables['예약날짜'] = resDate;
+                        variables['예약일시'] = resDate;
+                    }
+                    const content = selectedTemplate.sensContent || '';
+                    const buttons = (selectedTemplate.steps && selectedTemplate.steps[0]) ? selectedTemplate.steps[0].buttons || [] : [];
+
+                    const endpoint = currentMode === 'alimtalk' ? '/api/alltalk/send-alimtalk' : '/api/alltalk/send-brandmessage';
+                    
+                    res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            patients,
+                            templateCode: selectedTemplate.sensTemplateCode,
+                            messageType: selectedTemplate.messageType || 'TEXT',
+                            content,
+                            buttons: buttons.map(b => ({
+                                type: b.type === 'url' ? 'WL' : (b.type === 'app' ? 'AL' : b.type),
+                                name: b.name,
+                                linkMobile: b.linkMobile || '',
+                                linkPc: b.linkPc || ''
+                            })),
+                            variables
+                        })
+                    });
+                } else {
+                    res = await fetch('/api/send-sms', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ patients, content: document.getElementById('sms-message').value })
+                    });
+                }
+
+                const result = await res.json();
+                if (result.success) {
+                    showToast('✅ 발송 완료', `${patients.length}건 처리되었습니다.`);
+                    selectedPatients = [];
+                    if (currentMode === 'sms') document.getElementById('sms-message').value = '';
+                    renderSelectedPatients();
+                    loadHistory();
+                } else {
+                    showToast('❌ 발송 실패', result.message || '오류 발생', true);
+                }
+            } catch (e) {
+                showToast('❌ 오류', e.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = currentMode === 'alimtalk' ? '📲 알림톡 발송' : (currentMode === 'bmm' ? '🏷️ 브랜드메시지 발송' : '✉️ 문자 발송');
+                updateSendButton();
+            }
+        }
+
+        // ==========================================
+        // 이력 로드
+        // ==========================================
+        async function loadHistory() {
+            try {
+                const res = await fetch('/api/message-history?limit=50');
+                const result = await res.json();
+                const container = document.getElementById('history-list');
+
+                if (result.success && result.data && result.data.length > 0) {
+                    historyData = result.data; // 데이터 캐싱
+                    let html = '<table class="history-table"><thead><tr><th>일시</th><th>환자명</th><th>유형</th><th>결과</th></tr></thead><tbody>';
+                    result.data.forEach((h, idx) => {
+                        const date = h.sentAt ? new Date(h.sentAt).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+                        let typeColor = '#64748b', typeBg = '#f1f5f9';
+                        if (h.type === '알림톡') { typeColor = '#92400e'; typeBg = '#fef3c7'; }
+                        else if (h.type === 'SMS' || h.type === '문자') { typeColor = '#15803d'; typeBg = '#dcfce7'; }
+                        else if (h.type === 'LMS') { typeColor = '#1e40af'; typeBg = '#dbeafe'; }
+
+                        const isActive = (idx === selectedHistoryIdx) ? 'active' : '';
+
+                        html += `<tr class="${isActive}" onclick="viewHistoryDetail(${idx})">
+                            <td style="color:#64748b; font-size:11px;">${date}</td>
+                            <td style="font-weight:600;">
+                                ${h.patientName || '-'}
+                                <span style="font-weight:400; font-size:11px; color:#94a3b8; margin-left:4px;">(${h.chartNo || '-'})</span>
+                            </td>
+                            <td><span class="type-tag" style="color:${typeColor}; background:${typeBg};">${h.type || '기타'}</span></td>
+                            <td style="text-align:center;">${(h.status === 'success' || h.status === '예약') ? '✅' : '❌'}</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<div class="empty-state"><p>이력이 없습니다.</p></div>';
+                }
+            } catch (e) {
+                console.log('이력 로드:', e.message);
+            }
+        }
+
+        function viewHistoryDetail(idx) {
+            selectedHistoryIdx = idx;
+            
+            // 테이블 행 활성화 표시
+            const rows = document.querySelectorAll('.history-table tbody tr');
+            rows.forEach((row, i) => {
+                row.classList.toggle('active', i === idx);
+            });
+
+            updatePreview();
+        }
+
+        function resetPreview() {
+            selectedHistoryIdx = -1;
+            
+            // 테이블 행 활성화 해제
+            const rows = document.querySelectorAll('.history-table tbody tr');
+            rows.forEach(row => row.classList.remove('active'));
+
+            updatePreview();
+        }
+
+        // ==========================================
+        // 토스트 알림
+        // ==========================================
+        function showToast(title, message, isError = false) {
+            const toast = document.getElementById('result-toast');
+            document.getElementById('toast-title').textContent = title;
+            document.getElementById('toast-message').textContent = message;
+            toast.className = 'result-toast' + (isError ? ' error' : '');
+            toast.style.display = 'block';
+
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
+        }
+
+        // ==========================================
+        // 템플릿 동기화 (SENS)
+        // ==========================================
+        async function syncTemplates() {
+            const statusEl = document.getElementById('sync-status');
+            const btn = document.querySelector('.sync-btn');
+            
+            statusEl.style.display = 'block';
+            statusEl.textContent = '🔄 동기화 중...';
+            statusEl.style.color = '#6366f1';
+            btn.disabled = true;
+
+            try {
+                // 1. 알림톡 동기화
+                const res1 = await fetch('/api/alltalk/import-sens-templates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result1 = await res1.json();
+
+                // 2. 브랜드 메시지 동기화
+                const res2 = await fetch('/api/alltalk/import-bmm-templates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result2 = await res2.json();
+
+                if (result1.success || result2.success) {
+                    const msg = `${result1.success ? '알림톡 완료' : '알림톡 실패'} / ${result2.success ? '브랜드메시지 완료' : '브랜드메시지 실패'}`;
+                    statusEl.textContent = `✅ ${msg}`;
+                    statusEl.style.color = '#10b981';
+                    showToast('✅ 동기화 완료', msg);
+                    loadTemplates(); // 목록 새로고침
+                } else {
+                    statusEl.textContent = `❌ 동기화 실패`;
+                    statusEl.style.color = '#ef4444';
+                    showToast('❌ 동기화 실패', '알림톡 및 브랜드메시지 동기화에 모두 실패했습니다.', true);
+                }
+            } catch (error) {
+                statusEl.textContent = `❌ 오류: ${error.message}`;
+                statusEl.style.color = '#ef4444';
+                showToast('❌ 통신 오류', error.message, true);
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => { 
+                    statusEl.style.display = 'none'; 
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+
+</html>
