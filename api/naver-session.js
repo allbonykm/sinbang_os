@@ -12,11 +12,17 @@ if (!fs.existsSync(path.join(__dirname, '../data'))) {
 
 let browser = null;
 let page = null;
+let isLaunching = false;
 
 const NaverSession = {
     // 1. Login Function (Manual Intervention)
     login: async () => {
+        if (isLaunching) {
+            return { success: false, message: '이미 로그인이 진행 중입니다. 잠시만 기다려주세요.' };
+        }
+        
         try {
+            isLaunching = true;
             console.log("[NaverSession] Login requested. initializing...");
 
             // Force close existing browser if any
@@ -31,18 +37,28 @@ const NaverSession = {
                 page = null;
             }
 
+            // 이전 세션 탭 복원 방지: 세션 파일 삭제
+            const sessionFiles = ['Current Session', 'Current Tabs', 'Last Session', 'Last Tabs'];
+            const defaultProfileDir = path.join(USER_DATA_DIR, 'Default');
+            for (const f of sessionFiles) {
+                try { fs.unlinkSync(path.join(defaultProfileDir, f)); } catch (e) { /* 없으면 무시 */ }
+            }
+
             console.log("[NaverSession] Launching new browser instance...");
             browser = await puppeteer.launch({
                 headless: false,
                 defaultViewport: null,
-                userDataDir: USER_DATA_DIR, // Use persistent profile
+                userDataDir: USER_DATA_DIR,
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-gpu',
-                    '--disable-features=IsolateOrigins,site-per-process',
                     '--window-size=1280,1024',
-                    '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    '--disable-session-crashed-bubble',
+                    '--disable-infobars',
+                    '--no-first-run',
+                    '--no-default-browser-check'
                 ]
             });
 
@@ -50,16 +66,16 @@ const NaverSession = {
                 console.log("[NaverSession] Browser disconnected.");
                 browser = null;
                 page = null;
+                isLaunching = false;
             });
 
+            // 기본 탭을 사용하여 로그인 페이지로 바로 이동
+            await new Promise(r => setTimeout(r, 1500));
             const pages = await browser.pages();
-            page = pages.length > 0 ? pages[0] : await browser.newPage();
-
-            // Set User-Agent for this page as well
+            page = pages[0] || await browser.newPage();
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
             console.log("[NaverSession] Navigating to Naver login...");
-            // Increased timeout for slow loading
             await page.goto('https://nid.naver.com/nidlogin.login', { waitUntil: 'domcontentloaded', timeout: 60000 });
 
             // Attempt to check "Keep me logged in" (로그인 상태 유지) automatically
@@ -103,10 +119,12 @@ const NaverSession = {
                         await browser.close();
                         browser = null;
                         page = null;
+                        isLaunching = false;
                     }
                 } catch (e) {
                     console.error("[NaverSession] Login check error:", e.message);
                     clearInterval(checkLoginInterval);
+                    isLaunching = false;
                 }
             }, 2000);
 
@@ -118,6 +136,7 @@ const NaverSession = {
 
         } catch (error) {
             console.error("[NaverSession] Login critical error:", error);
+            isLaunching = false;
             if (browser) {
                 try { await browser.close(); } catch (e) { }
                 browser = null;

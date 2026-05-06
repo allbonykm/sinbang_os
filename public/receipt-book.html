@@ -222,6 +222,56 @@
             font-weight: bold;
             padding: 0 5px;
         }
+
+        /* 환자 검색 스타일 추가 */
+        .search-area {
+            margin-left: 20px;
+            position: relative;
+            flex: 1;
+            max-width: 300px;
+        }
+        .search-container {
+            position: relative;
+        }
+        #patient-search {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        #patient-search:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+        }
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .search-dropdown.show { display: block; }
+        .search-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-item:hover, .search-item.active { background: #f8fafc; }
+        .search-item .name { font-weight: 600; font-size: 14px; }
+        .search-item .info { font-size: 12px; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -231,9 +281,16 @@
                 <h1>일일 매출 현황</h1>
                 <div class="date-picker-area">
                     <input type="date" id="target-date" class="date-input" onchange="loadData()">
+                    <div class="search-area">
+                        <div class="search-container">
+                            <input type="text" id="patient-search" placeholder="추가할 환자 검색..." autocomplete="off">
+                            <div class="search-dropdown" id="search-dropdown"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="text-right">
+                <button class="btn-add-expense" onclick="location.href='/dashboard.html'">대시보드로 가기</button>
             </div>
         </header>
 
@@ -550,6 +607,108 @@
                 alert('저장 중 오류가 발생했습니다.');
             }
         }
+
+        // 환자 검색 및 추가 로직
+        let searchResults = [];
+        let searchSelectedIndex = -1;
+
+        document.getElementById('patient-search').addEventListener('input', (e) => {
+            const query = e.target.value.trim().toLowerCase();
+            const dropdown = document.getElementById('search-dropdown');
+
+            if (query.length < 1) {
+                dropdown.classList.remove('show');
+                searchResults = [];
+                searchSelectedIndex = -1;
+                return;
+            }
+
+            fetch(`/api/patients/search?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(result => {
+                    if (result.success && result.data.length > 0) {
+                        searchResults = result.data.slice(0, 10);
+                        searchSelectedIndex = 0;
+                        renderSearchDropdown();
+                    } else {
+                        searchResults = [];
+                        searchSelectedIndex = -1;
+                        dropdown.innerHTML = '<div class="search-item" style="color: #9ca3af;">검색 결과 없음</div>';
+                    }
+                    dropdown.classList.add('show');
+                })
+                .catch(err => console.error('검색 실패:', err));
+        });
+
+        function renderSearchDropdown() {
+            const dropdown = document.getElementById('search-dropdown');
+            dropdown.innerHTML = searchResults.map((p, idx) => `
+                <div class="search-item ${idx === searchSelectedIndex ? 'active' : ''}" onclick="addManualPatientByIndex(${idx})">
+                    <div>
+                        <span class="name">${p.name}</span>
+                        <span class="info" style="margin-left: 8px;">${p.chartNo || ''}</span>
+                    </div>
+                    <span class="info">${p.phone || ''}</span>
+                </div>
+            `).join('');
+        }
+
+        function addManualPatientByIndex(idx) {
+            const p = searchResults[idx];
+            if (!p) return;
+            addManualPatient(p);
+        }
+
+        function addManualPatient(p) {
+            // 중복 추가 방지 (이미 목록에 있는지 확인)
+            const exists = receipts.find(r => String(r.patientId) === String(p.id));
+            if (exists) {
+                if (!confirm('이미 목록에 있는 환자입니다. 추가로 행을 생성하시겠습니까?')) return;
+            }
+
+            receipts.push({
+                visitId: null,
+                patientId: p.id,
+                patientName: p.name,
+                chartNo: p.chartNo,
+                type: '',
+                procedureDetails: '',
+                cashAmount: 0,
+                cardAmount: 0,
+                cardName: '',
+                isNew: true
+            });
+            
+            renderReceipts();
+            updateSummary();
+            
+            document.getElementById('patient-search').value = '';
+            document.getElementById('search-dropdown').classList.remove('show');
+        }
+
+        document.getElementById('patient-search').addEventListener('keydown', (e) => {
+            if (!searchResults.length) return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                searchSelectedIndex = (searchSelectedIndex + 1) % searchResults.length;
+                renderSearchDropdown();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                searchSelectedIndex = (searchSelectedIndex - 1 + searchResults.length) % searchResults.length;
+                renderSearchDropdown();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (searchSelectedIndex >= 0) {
+                    addManualPatient(searchResults[searchSelectedIndex]);
+                }
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                document.getElementById('search-dropdown').classList.remove('show');
+            }
+        });
     </script>
 </body>
 </html>

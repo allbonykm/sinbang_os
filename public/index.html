@@ -242,6 +242,8 @@
             { id: 'dashboard', title: '대시보드', icon: '🏠', url: '/dashboard.html' },
             { id: 'patients', title: '환자 관리', icon: '👤', url: '/patients.html' },
             { id: 'booking', title: '예약 관리', icon: '📅', url: '/booking.html' },
+            { id: 'booking-calendar', title: '예약 캘린더', icon: '📆', url: '/booking_calendar.html' },
+            { id: 'jabo-management', title: '자보 관리', icon: '🚗', url: '/jabo-management.html' },
             { id: 'alltalk', title: '올톡', icon: '📱', url: '/alltalk.html' },
             { id: 'visit-analysis', title: '내원간격 분석', icon: '📊', url: '/visit_analysis.html' },
             { id: 'visit-calendar', title: '내원 캘린더', icon: '📅', url: '/visit_calendar.html' },
@@ -256,6 +258,7 @@
         // 별칭 및 추가 모듈
         modules['messages'] = modules['message-system']; // Alias
         modules['computer-admin'] = { title: '컴퓨터 관리', url: '/computer-admin.html', icon: '🖥️' }; // Admin only
+        modules['receipt-book'] = { title: '장부', url: '/receipt-book.html', icon: '💰' }; // Admin only
 
         let computerInfo = null;
         let allowedMenus = [];
@@ -422,6 +425,20 @@
             });
 
             menu.appendChild(adminMenuItem);
+
+            // 장부 메뉴 (컴퓨터 관리 아래)
+            if (!document.querySelector('[data-module="receipt-book"]')) {
+                const receiptMenuItem = document.createElement('div');
+                receiptMenuItem.className = 'menu-item';
+                receiptMenuItem.setAttribute('data-module', 'receipt-book');
+                receiptMenuItem.innerHTML = `<span class="menu-icon">💰</span><span>장부</span>`;
+
+                receiptMenuItem.addEventListener('click', (e) => {
+                    loadModule('receipt-book', e);
+                });
+
+                menu.appendChild(receiptMenuItem);
+            }
         }
 
         // 컴퓨터 이름 표시

@@ -392,11 +392,7 @@ async function sendBrandMessage(name, chartNo, phone, templateCode, messageType 
             to: phone,
             content: bmmContent, // 텍스트 본문 명시
             buttons: buttons && buttons.length > 0 ? buttons : undefined, // 버튼 정보 명시
-            useSmsFailover: true,
-            failoverConfig: {
-                content: stripEmojis(bmmContent),
-                from: config.NAVER_FROM_PHONE || '0415778575'
-            }
+            useSmsFailover: false // 브랜드 메시지 대체 문자 발송 차단
         }]
     };
 

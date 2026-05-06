@@ -5,7 +5,7 @@ const NaverSession = require('./naver-session');
 
 // This business ID is derived from the review URL seen in api/naver-reviews.js
 // bookingBusinessId=535748
-const BUSINESS_ID = '535748';
+const BUSINESS_ID = '337551';
 const BOOKING_LIST_URL = `https://partner.booking.naver.com/bizes/${BUSINESS_ID}/booking-list-view`;
 
 const NaverBookings = {

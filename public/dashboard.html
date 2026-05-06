@@ -44,58 +44,87 @@
 
         .search-section h2 .header-buttons {
             display: flex;
-            gap: 8px;
+            align-items: flex-start;
+            gap: 12px;
+            margin-top: 5px;
         }
 
-        .search-section h2 .header-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .search-section h2 .header-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* 네이버 동기화 버튼 스타일 (이미지 기반) */
-        .sync-group {
+        .header-btn-item {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
         }
 
-        .naver-sync-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: #03C75A;
+        .header-btn {
+            width: 68px;
+            height: 68px;
             border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 900;
-            cursor: pointer;
+            border-radius: 16px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            gap: 4px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .naver-sync-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: scale(1.05);
+        .header-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(rgba(255,255,255,0.15), transparent);
+            pointer-events: none;
+        }
+
+        .header-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            filter: brightness(1.1);
+        }
+
+        .header-btn:active {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .header-btn .emoji {
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .header-btn.btn-naver { background: linear-gradient(135deg, #03C75A 0%, #02b14f 100%); color: white; }
+        .header-btn.btn-jabo { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
+        .header-btn.btn-reject { background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); }
+        .header-btn.btn-delivery { background: linear-gradient(135deg, #374151 0%, #111827 100%); }
+        .header-btn.btn-booking { background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); }
+        .header-btn.btn-visit { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
+        .header-btn.btn-receipt { background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); }
+        .header-btn.btn-settings { 
+            background: #ffffff; 
+            color: #475569; 
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
         }
 
         .sync-time {
             font-size: 11px;
-            color: #03C75A;
+            color: #ffffff;
+            opacity: 0.9;
             font-weight: 700;
             white-space: nowrap;
+            text-align: center;
+            margin-top: 2px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
         }
 
         .search-container {
@@ -527,26 +556,62 @@
                 <h2>
                     <span>🔍 환자 검색</span>
                     <div class="header-buttons">
-                        <div class="sync-group">
-                            <button class="naver-sync-btn" id="naver-sync-btn" onclick="triggerNaverSync()"
-                                title="네이버 동기화">N</button>
+                        <div class="header-btn-item">
+                            <button class="header-btn btn-naver" id="naver-sync-btn" onclick="triggerNaverSync()" title="네이버 동기화">
+                                <span class="emoji">N</span>
+                                <span>네이버</span>
+                            </button>
                             <span class="sync-time" id="sync-time-display">최근: -</span>
                         </div>
-                        <button class="header-btn" onclick="location.href='/jabo-management.html'"
-                            style="background: #2563eb; color: white; margin-left: 5px;">🚗 자보</button>
 
-                        <button class="header-btn" onclick="openRejectListModal()"
-                            style="background: #ef4444; color: white;">🚫 수신거부</button>
-                        <button class="header-btn" onclick="openDeliveryModal()"
-                            style="background: #1a1a2e; color: white;">📦 택배</button>
-                        <button class="header-btn" onclick="location.href='/booking_calendar.html'"
-                            style="background: #4f46e5; color: white; margin-left: 5px;">📅 예약</button>
-                        <button class="header-btn" onclick="location.href='/visit_calendar.html'"
-                            style="background: #10b981; color: white; margin-left: 5px;">🏥 내원</button>
-                        <button class="header-btn" onclick="location.href='/receipt-book.html'"
-                            style="background: #4f46e5; color: white; margin-left: 5px;">💰 장부</button>
-                        <button class="header-btn" onclick="openApiKeyModal()"
-                            style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; margin-left: 4px;">⚙️</button>
+                        <div class="header-btn-item">
+                            <button class="header-btn btn-jabo" onclick="location.href='/jabo-management.html'">
+                                <span class="emoji">🚗</span>
+                                <span>자보</span>
+                            </button>
+                        </div>
+
+                        <div class="header-btn-item">
+                            <button class="header-btn btn-reject" onclick="openRejectListModal()">
+                                <span class="emoji">🚫</span>
+                                <span>수신거부</span>
+                            </button>
+                        </div>
+
+                        <div class="header-btn-item">
+                            <button class="header-btn btn-delivery" onclick="openDeliveryModal()">
+                                <span class="emoji">📦</span>
+                                <span>택배</span>
+                            </button>
+                        </div>
+
+                        <div class="header-btn-item">
+                            <button class="header-btn btn-booking" onclick="location.href='/booking_calendar.html'">
+                                <span class="emoji">📅</span>
+                                <span>예약</span>
+                            </button>
+                        </div>
+
+                        <div class="header-btn-item">
+                            <button class="header-btn btn-visit" onclick="location.href='/visit_calendar.html'">
+                                <span class="emoji">🏥</span>
+                                <span>내원</span>
+                            </button>
+                        </div>
+
+                        <div class="header-btn-item">
+                            <button class="header-btn btn-receipt" onclick="location.href='/receipt-book.html'">
+                                <span class="emoji">💰</span>
+                                <span>장부</span>
+                            </button>
+                        </div>
+
+                        <div class="header-btn-item">
+                            <button class="header-btn btn-settings" onclick="openApiKeyModal()">
+                                <span class="emoji">⚙️</span>
+                                <span>설정</span>
+                            </button>
+                        </div>
                     </div>
                 </h2>
                 <div class="search-container">
@@ -595,6 +660,10 @@
                                 style="background: #3b82f6; color: white; padding: 2px 5px; border-radius: 3px;">📅예약</span>
                             <span
                                 style="background: #667eea; color: white; padding: 2px 5px; border-radius: 3px;">📋상세</span>
+                            <span
+                                style="background: #10b981; color: white; padding: 2px 5px; border-radius: 3px;">💰수납</span>
+                            <span
+                                style="background: #3b82f6; color: white; padding: 2px 5px; border-radius: 3px;">📱문자</span>
                             <span
                                 style="background: #fbbf24; color: #333; padding: 2px 5px; border-radius: 3px;">💬알림톡</span>
                         </div>
