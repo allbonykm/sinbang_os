@@ -201,9 +201,22 @@ const NaverSession = {
         }
     },
 
-    // 6. Check Session Existence
+    // 6. Check Session Existence (만료 시간 검증 포함)
     hasCookies: () => {
-        return fs.existsSync(SESSION_FILE_PATH);
+        if (!fs.existsSync(SESSION_FILE_PATH)) return false;
+        try {
+            const cookies = JSON.parse(fs.readFileSync(SESSION_FILE_PATH, 'utf8'));
+            const authCookie = cookies.find(c => c.name === 'NID_SES' || c.name === 'NID_AUT');
+            if (!authCookie) return false;
+            // expires가 있으면 만료 시간 검증 (초 단위)
+            if (authCookie.expires && authCookie.expires > 0) {
+                return authCookie.expires > Date.now() / 1000;
+            }
+            return true; // expires가 없으면 세션 쿠키로 간주
+        } catch (e) {
+            console.error('[NaverSession] 쿠키 검증 실패:', e.message);
+            return false;
+        }
     },
 
     USER_DATA_DIR: USER_DATA_DIR

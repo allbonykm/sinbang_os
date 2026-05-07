@@ -1,0 +1,11 @@
+[ 네이버 예약 동기화 개선 - 최종 수정 파일 목록 (2026-05-07) ]
+
+1. api/naver-session.js (세션 만료 검증 로직 추가)
+2. api/naver-bookings.js (셀렉터 외부화 및 결정적 ID 생성)
+3. utils/bookingSync.js (Mutex Lock 및 시간 변경 알림톡 추가)
+4. services/scheduler.js (연속 실패 감지 및 대시보드 알림)
+5. routes/naverSync.js (동시 실행 방지 및 코드 정리)
+6. public/dashboard.html (세션 만료 경고 배너 및 소켓 리스너)
+7. data/scraper-selectors.json (신규 - CSS 셀렉터 설정)
+8. data/alltalk-templates.json (D0Booking 템플릿 오타 수정)
+9. 이동목록.TXT (수정 목록 정리)

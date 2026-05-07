@@ -1,14 +1,30 @@
 const pool = require('../config/db');
 const sens = require('./naver-sens');
 const { ALIMTALK_EVENTS } = require('./alimtalk-manager');
+const { formatKoreanDate, formatKoreanTime } = require('./dateUtils');
 
 /**
  * bookingSync - MariaDB Version
  * Synchronizes Naver bookings with the database.
  * Handles reschedules by matching existing records on the same day.
  */
+
+// 동시 실행 방지 (Mutex Lock)
+let isSyncing = false;
+
 const bookingSync = {
+    // 동기화 진행 상태 조회 (외부에서 확인용)
+    isBusy: () => isSyncing,
+
     syncBookings: async (fetchedBookings) => {
+        // 동시 실행 방지: 이미 동기화 중이면 건너뜀
+        if (isSyncing) {
+            console.log('[Sync] 이미 동기화가 진행 중입니다. 건너뜁니다.');
+            return { added: 0, updated: 0, skipped: 0, blocked: true };
+        }
+        isSyncing = true;
+
+        try {
         console.log(`[Sync] Processing ${fetchedBookings.length} bookings from Naver...`);
 
         let added = 0;
@@ -50,6 +66,8 @@ const bookingSync = {
 
                     // Check for changes (Time or Status)
                     if (existing.naverStatus !== newBooking.naverStatus || existing.time !== newBooking.time || !existing.bookingId) {
+                        const isTimeChanged = existing.time !== newBooking.time;
+                        
                         await pool.query(
                             `UPDATE bookings SET 
                                 time = ?, 
@@ -68,6 +86,38 @@ const bookingSync = {
                             ]
                         );
                         updated++;
+
+                        // [추가] 시간 변경 시 알림톡 발송
+                        if (isTimeChanged) {
+                            try {
+                                const [pRows] = await pool.query('SELECT hasKakao, rejectSms FROM patients WHERE name = ? AND phone LIKE ?', [newBooking.name, `%${phoneLast4}`]);
+                                const isReject = pRows.length > 0 && (pRows[0].hasKakao === 0 || pRows[0].rejectSms === 1);
+                                
+                                if (!isReject && formattedPhone && formattedPhone.length >= 10) {
+                                    const resDate = formatKoreanDate(newBooking.date);
+                                    const resTime = formatKoreanTime(newBooking.time);
+                                    const cleanPhone = formattedPhone.replace(/[^0-9]/g, '');
+
+                                    await sens.sendAlimTalk(
+                                        newBooking.name, 
+                                        chartNo, 
+                                        cleanPhone, 
+                                        null, 
+                                        ALIMTALK_EVENTS.FIRST_BOOKING, 
+                                        null, 
+                                        null, 
+                                        { 
+                                            "이름": newBooking.name,
+                                            "예약날짜": resDate,
+                                            "예약시간": resTime
+                                        }
+                                    );
+                                    console.log(`[Sync-Reschedule] Sent update notification to ${newBooking.name} for ${resDate} ${resTime}`);
+                                }
+                            } catch (alimError) {
+                                console.error('[Sync-Reschedule] 발송 실패:', alimError.message);
+                            }
+                        }
                     } else {
                         skipped++;
                     }
@@ -103,14 +153,16 @@ const bookingSync = {
 
                     // [추가] 네이버 예약 동기화 시에도 알림톡 발송 (FirstBooking)
                     try {
-                        const [pRows] = await pool.query('SELECT hasKakao, rejectSms FROM patients WHERE name = ? AND phone LIKE ?', [newBooking.name, `%${phoneLast4}`]);
+                        // 수신 거부 및 카카오톡 사용 여부 확인
+                        const [pRows] = await pool.query(
+                            'SELECT hasKakao, rejectSms FROM patients WHERE name = ? AND (phone = ? OR phone = ? OR phone LIKE ?)', 
+                            [newBooking.name, formattedPhone, rawPhone, `%${phoneLast4}`]
+                        );
                         const isReject = pRows.length > 0 && (pRows[0].hasKakao === 0 || pRows[0].rejectSms === 1);
                         
                         if (!isReject && formattedPhone && formattedPhone.length >= 10) {
-                            const { formatKoreanDate, formatKoreanTime } = require('./dateUtils');
                             const resDate = formatKoreanDate(newBooking.date);
                             const resTime = formatKoreanTime(newBooking.time);
-                            
                             const cleanPhone = formattedPhone.replace(/[^0-9]/g, '');
 
                             const result = await sens.sendAlimTalk(
@@ -151,6 +203,11 @@ const bookingSync = {
 
         console.log(`[Sync] MariaDB Sync Complete. Added: ${added}, Updated: ${updated}, Skipped: ${skipped}`);
         return { added, updated, skipped };
+
+        } finally {
+            // Lock 해제: 성공/실패와 관계없이 항상 해제
+            isSyncing = false;
+        }
     }
 };
 

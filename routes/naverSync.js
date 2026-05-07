@@ -31,6 +31,14 @@ router.get('/login', async (req, res) => {
 
 // 수동 동기화 트리거
 router.post('/trigger', async (req, res) => {
+    // 동시 실행 방지 체크
+    if (bookingSync.isBusy()) {
+        return res.json({
+            success: false,
+            message: '이미 동기화가 진행 중입니다. 잠시 후 다시 시도해주세요.'
+        });
+    }
+
     const io = req.app.get('io');
     
     // 0. 즉시 응답 반환 (Puppeteer가 오래 걸릴 수 있으므로 비동기 처리)
@@ -71,7 +79,6 @@ router.post('/trigger', async (req, res) => {
             }
         } catch (error) {
             console.error('[API] Background Naver Sync Error:', error);
-            const io = req.app.get('io');
             if (io) {
                 io.emit('sync:error', { message: '서버 내부 오류로 동기화에 실패했습니다.' });
             }

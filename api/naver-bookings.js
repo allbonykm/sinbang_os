@@ -7,6 +7,29 @@ const NaverSession = require('./naver-session');
 // bookingBusinessId=535748
 const BUSINESS_ID = '337551';
 const BOOKING_LIST_URL = `https://partner.booking.naver.com/bizes/${BUSINESS_ID}/booking-list-view`;
+const SELECTORS_FILE = path.join(__dirname, '../data/scraper-selectors.json');
+
+// 외부 설정 파일에서 CSS 셀렉터 로드 (네이버 UI 변경 시 JSON만 수정)
+function loadSelectors() {
+    const defaults = {
+        container: '[class*="BookingListView__list-contents"]',
+        phone: '[class*="BookingListView__phone"]',
+        nameArea: '[class*="BookingListView__name-area"]',
+        bookNumber: '[class*="BookingListView__book-number"]',
+        state: '[class*="BookingListView__state"]',
+        bookDate: '[class*="BookingListView__book-date"], [class*="BookingListView__order-date"]',
+        rowContentClass: 'BookingListView__content',
+        rowInnerClass: 'BookingListView__contents-inner'
+    };
+    try {
+        if (fs.existsSync(SELECTORS_FILE)) {
+            return { ...defaults, ...JSON.parse(fs.readFileSync(SELECTORS_FILE, 'utf8')) };
+        }
+    } catch (e) {
+        console.error('[NaverBookings] 셀렉터 설정 로드 실패, 기본값 사용:', e.message);
+    }
+    return defaults;
+}
 
 const NaverBookings = {
     fetchBookings: async () => {
@@ -48,64 +71,61 @@ const NaverBookings = {
             }
 
 
-            // 5. Scrape Data
-            // Revised selectors based on actual class names found in debug HTML
+            // 5. Scrape Data (외부 설정 파일 기반 셀렉터)
+            const SEL = loadSelectors();
             try {
-                // Wait for the container
-                await page.waitForSelector('[class*="BookingListView__list-contents"]', { timeout: 10000 });
+                // 컨테이너 대기
+                await page.waitForSelector(SEL.container, { timeout: 10000 });
                 console.log("[NaverBookings] List container found.");
 
-                // Wait for at least one phone element to ensure data is loaded
+                // 전화번호 요소 대기 (데이터 로드 확인)
                 try {
-                    await page.waitForSelector('[class*="BookingListView__phone"]', { timeout: 5000 });
+                    await page.waitForSelector(SEL.phone, { timeout: 5000 });
                     console.log("[NaverBookings] Data elements appeared.");
                 } catch (e) {
                     console.log("[NaverBookings] Data elements not found (Empty list?).");
                 }
             } catch (e) {
-                console.log("[NaverBookings] List container not found.");
+                // 셀렉터 매칭 실패 시 HTML 스냅샷 저장 (디버깅용)
+                console.error("[NaverBookings] List container not found. HTML 스냅샷을 저장합니다.");
+                try {
+                    const html = await page.content();
+                    const snapshotPath = path.join(__dirname, '../data/scraper-debug.html');
+                    fs.writeFileSync(snapshotPath, html, 'utf8');
+                    console.log(`[NaverBookings] 디버그 HTML 저장 완료: ${snapshotPath}`);
+                } catch (snapErr) {
+                    console.error('[NaverBookings] HTML 스냅샷 저장 실패:', snapErr.message);
+                }
             }
 
-            const bookings = await page.evaluate(() => {
+            const bookings = await page.evaluate((selectors) => {
                 const results = [];
-                const container = document.querySelector('[class*="BookingListView__list-contents"]');
+                const container = document.querySelector(selectors.container);
                 if (!container) return [];
 
-                // Assuming direct children or div children are rows
-                // We'll iterate through all elements that contain a phone number, effectively treating them as rows
-                const phoneEls = container.querySelectorAll('[class*="BookingListView__phone"]');
+                const phoneEls = container.querySelectorAll(selectors.phone);
                 console.log(`[NaverBookings] Found ${phoneEls.length} items.`);
 
                 phoneEls.forEach(phoneEl => {
                     try {
-                        // Traverse up to find the row container (approximate)
-                        // The phone element is likely deep inside the row.
-                        // We can just query relative to the phone element's common ancestor for this row.
-                        // Let's assume 5-6 levels up is enough to cover the row, or find a common wrapper.
-                        // Better yet, just find the closest row-like container if possible, but we don't know the class.
-                        // Strategy: Use the phoneEl to find the row context.
-
+                        // 행(Row) 탐색: 전화번호 요소에서 부모를 올라가며 행 컨테이너 찾기
                         let row = phoneEl.parentElement;
-                        // Walk up until we find the container or a likely row wrapper
-                        // The 'BookingListView__content' class might be the row
-                        while (row && row !== container && !row.className.includes('BookingListView__content') && !row.className.includes('BookingListView__contents-inner')) {
+                        while (row && row !== container && !row.className.includes(selectors.rowContentClass) && !row.className.includes(selectors.rowInnerClass)) {
                             row = row.parentElement;
                             if (!row) break;
                         }
                         if (!row || row === container) {
-                            // Fallback: just use phoneEl's parent's parent
                             row = phoneEl.parentElement.parentElement.parentElement;
                         }
 
-                        // Now scope selectors to this row
-                        const nameEl = row.querySelector('[class*="BookingListView__name-area"]');
-                        // Name might be inside name-area
+                        // 셀렉터 기반 데이터 추출
+                        const nameEl = row.querySelector(selectors.nameArea);
                         const name = nameEl ? nameEl.innerText.split('\n')[0].trim() : 'Unknown';
 
-                        const bookIdEl = row.querySelector('[class*="BookingListView__book-number"]');
+                        const bookIdEl = row.querySelector(selectors.bookNumber);
                         let bookingId = bookIdEl ? bookIdEl.innerText.trim() : '';
 
-                        // Try to find ID in href if text is messy
+                        // href에서 ID 추출 시도
                         if (!bookingId || bookingId.length < 5) {
                             const link = row.querySelector('a[href*="/booking/"]');
                             if (link) {
@@ -114,19 +134,21 @@ const NaverBookings = {
                             }
                         }
 
-                        // Clean ID (remove '변경' or other badges)
+                        // ID 정리 (숫자만)
                         if (bookingId) {
                             bookingId = bookingId.replace(/[^0-9]/g, '');
                         }
 
                         if (!bookingId) {
-                            bookingId = 'UNKNOWN_' + Math.random().toString(36).substr(2, 5);
+                            // 결정적 ID 생성: 동일 예약은 항상 동일 ID → 중복 INSERT 방지
+                            const phoneLast4 = (phoneEl.innerText || '').replace(/[^0-9]/g, '').slice(-4);
+                            bookingId = `NAVER_${name}_${date}_${phoneLast4}`;
                         }
 
-                        const statusEl = row.querySelector('[class*="BookingListView__state"]');
+                        const statusEl = row.querySelector(selectors.state);
                         const status = statusEl ? statusEl.innerText.trim() : '';
 
-                        const dateEl = row.querySelector('[class*="BookingListView__book-date"], [class*="BookingListView__order-date"]');
+                        const dateEl = row.querySelector(selectors.bookDate);
                         let dateText = dateEl ? dateEl.innerText.trim() : '';
 
                         // Normalizing Date: 26. 1. 27.(화) 오후 6:30
@@ -179,7 +201,7 @@ const NaverBookings = {
                 });
 
                 return results;
-            });
+            }, SEL);
 
             await browser.close();
             console.log(`[NaverBookings] Scraped ${bookings.length} bookings.`);
