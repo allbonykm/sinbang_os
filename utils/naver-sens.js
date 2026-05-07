@@ -74,7 +74,7 @@ function loadTemplateFromJson(templateCode) {
 }
 
 // SMS 발송 (75바이트 초과 시 자동으로 LMS로 업그레이드)
-function sendSMS(phone, content) {
+function sendSMS(phone, content, name = null) {
     const config = getConfig();
     const timestamp = Date.now().toString();
     const urlPath = `/sms/v2/services/${config.SMS_SERVICE_ID}/messages`;
@@ -97,7 +97,17 @@ function sendSMS(phone, content) {
     };
 
     return makeRequest(urlPath, 'POST', payload, timestamp, signature)
-        .then(res => ({ ...res, msgType, byteLength })); // 바이트 정보 반환
+        .then(res => {
+                // 텔레그램 알림 추가
+            if (res.success) {
+                const telegram = require('./telegram');
+                const now = new Date().toLocaleString('ko-KR');
+                const nameDisplay = name ? `${name} 님` : `${phone}`;
+                const msg = `📱 [문자메시지]\n${nameDisplay}에게 문자 발송 완료!\n${now}`;
+                telegram.sendTelegramAlert(msg);
+            }
+            return { ...res, msgType, byteLength };
+        }); // 바이트 정보 반환
 }
 
 // 알림톡 발송
@@ -247,7 +257,17 @@ async function sendAlimTalk(name, chartNo, phone, failoverMessage, templateCode 
         useSmsFailover: false // 전체 레벨 차단
     };
 
-    return makeRequest(urlPath, 'POST', payload, timestamp, signature);
+    const result = await makeRequest(urlPath, 'POST', payload, timestamp, signature);
+
+    // 텔레그램 알림 추가
+    if (result.success) {
+        const telegram = require('./telegram');
+        const now = new Date().toLocaleString('ko-KR');
+        const msg = `💬 [알림톡]\n${name} 님에게 ${finalTemplateCode} 알림톡 발송 완료!\n${now}`;
+        telegram.sendTelegramAlert(msg);
+    }
+
+    return result;
 }
 
 // 공통 요청 헬퍼
