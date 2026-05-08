@@ -44,8 +44,9 @@ const getTodayDateString = () => {
 cron.schedule('0,30 * * * *', async () => {
     if (!config.smartBookingAgentEnabled) return;
 
-    const now = new Date();
-    const currentHour = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    // 한국 시간(KST) 기준으로 현재 시간 계산
+    const kstNow = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
+    const currentHour = `${String(kstNow.getUTCHours()).padStart(2, '0')}:${String(kstNow.getUTCMinutes()).padStart(2, '0')}`;
     
     // 알림 설정 로드
     const settings = getBookingConfig();
@@ -134,7 +135,7 @@ cron.schedule('30 * * * *', async () => {
     console.log('[Template Sync Agent] Triggered automatic template synchronization.');
 
     try {
-        const channelId = process.env.ALIMTALK_PLUS_ID || '@올보니';
+        const channelId = process.env.ALIMTALK_PLUS_ID || '@신방한의원';
         if (typeof sens.getAlimtalkTemplates !== 'function') {
             console.log('[Template Sync Agent] Skipping: util not found.');
             return;

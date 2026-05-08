@@ -26,6 +26,7 @@ const ALIMTALK_EVENTS = {
 
     // 7. 예약 안내
     FIRST_BOOKING: 'FirstBooking',         // 예약 즉시 발송
+    RESCHEDULE: 'FirstBooking',            // 예약 변경/확정 시 발송
     D0_BOOKING: 'D0Booking'                // 예약 당일 오전 8:30 발송
 };
 

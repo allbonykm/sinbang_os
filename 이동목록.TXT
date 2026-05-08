@@ -7,3 +7,20 @@ public/dashboard.html
 data/scraper-selectors.json
 data/alltalk-templates.json
 이동목록.TXT
+
+[2026-05-07 텔레그램 알림 연동 및 버그 수정]
+[Root]
+- .env
+- telegram_fn.txt
+- 이동목록.TXT
+
+[utils]
+- naver-sens.js
+- bookingSync.js
+- telegram.js
+
+[2026-05-08 네이버 예약 알림톡 로직 보완 및 스케줄러 수정]
+[utils]
+- alimtalk-manager.js (RESCHEDULE 이벤트 추가)
+- bookingSync.js (예약 변경/확정 시 FirstBooking 발송 로직 강화)
+- cron-agent.js (아침 8:30 발송 시간대 KST 보정 및 채널 ID 수정)

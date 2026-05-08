@@ -56,7 +56,7 @@ const bookingSync = {
                 // 3. Find existing booking to check for Reschedule
                 // Match by bookingId OR (Name + Date + PhoneLast4)
                 const [existingRows] = await pool.query(
-                    `SELECT id, time, naverStatus, bookingId FROM bookings 
+                    `SELECT id, time, naverStatus, bookingId, chartNo FROM bookings 
                      WHERE bookingId = ? OR (name = ? AND date = ? AND phone LIKE ?)`,
                     [newBooking.bookingId, newBooking.name, newBooking.date, `%${phoneLast4}`]
                 );
@@ -67,6 +67,8 @@ const bookingSync = {
                     // Check for changes (Time or Status)
                     if (existing.naverStatus !== newBooking.naverStatus || existing.time !== newBooking.time || !existing.bookingId) {
                         const isTimeChanged = existing.time !== newBooking.time;
+                        const isConfirmedNow = (existing.naverStatus !== '확정' && existing.naverStatus !== 'CONFIRM') && 
+                                             (newBooking.naverStatus === '확정' || newBooking.naverStatus === 'CONFIRM');
                         
                         await pool.query(
                             `UPDATE bookings SET 
@@ -87,8 +89,8 @@ const bookingSync = {
                         );
                         updated++;
 
-                        // [추가] 시간 변경 시 알림톡 발송
-                        if (isTimeChanged) {
+                        // [추가] 시간 변경 또는 확정 시 알림톡 발송
+                        if (isTimeChanged || isConfirmedNow) {
                             try {
                                 const [pRows] = await pool.query('SELECT hasKakao, rejectSms FROM patients WHERE name = ? AND phone LIKE ?', [newBooking.name, `%${phoneLast4}`]);
                                 const isReject = pRows.length > 0 && (pRows[0].hasKakao === 0 || pRows[0].rejectSms === 1);
@@ -97,13 +99,14 @@ const bookingSync = {
                                     const resDate = formatKoreanDate(newBooking.date);
                                     const resTime = formatKoreanTime(newBooking.time);
                                     const cleanPhone = formattedPhone.replace(/[^0-9]/g, '');
+                                    const currentChartNo = existing.chartNo || '';
 
-                                    await sens.sendAlimTalk(
+                                    const result = await sens.sendAlimTalk(
                                         newBooking.name, 
-                                        chartNo, 
+                                        currentChartNo, 
                                         cleanPhone, 
                                         null, 
-                                        ALIMTALK_EVENTS.FIRST_BOOKING, 
+                                        ALIMTALK_EVENTS.RESCHEDULE, 
                                         null, 
                                         null, 
                                         { 
@@ -112,7 +115,18 @@ const bookingSync = {
                                             "예약시간": resTime
                                         }
                                     );
-                                    console.log(`[Sync-Reschedule] Sent update notification to ${newBooking.name} for ${resDate} ${resTime}`);
+
+                                    // 발송 이력 기록
+                                    const statusName = result.success ? 'success' : 'failed';
+                                    const errorDesc = result.success ? '' : (result.error || '');
+                                    
+                                    await pool.query(
+                                        `INSERT INTO message_history (id, patientName, chartNo, phone, sentAt, type, status, templateCode, message)
+                                        VALUES (?, ?, ?, ?, NOW(), '알림톡', ?, ?, ?)`,
+                                        [Date.now() + Math.round(Math.random() * 1000), newBooking.name, currentChartNo, cleanPhone, statusName, ALIMTALK_EVENTS.RESCHEDULE, errorDesc]
+                                    );
+
+                                    console.log(`[Sync-Reschedule] Sent notification (${ALIMTALK_EVENTS.RESCHEDULE}) to ${newBooking.name} for ${resDate} ${resTime}`);
                                 }
                             } catch (alimError) {
                                 console.error('[Sync-Reschedule] 발송 실패:', alimError.message);
