@@ -247,7 +247,8 @@
             { id: 'alltalk', title: '올톡', icon: '📱', url: '/alltalk.html' },
             { id: 'visit-analysis', title: '내원간격 분석', icon: '📊', url: '/visit_analysis.html' },
             { id: 'visit-calendar', title: '내원 캘린더', icon: '📅', url: '/visit_calendar.html' },
-            { id: 'patient-upload', title: 'excel로 환자 등록', icon: '📂', url: '/patient-upload.html' }
+            { id: 'patient-upload', title: 'excel로 환자 등록', icon: '📂', url: '/patient-upload.html' },
+            { id: 'receipt-book', title: '장부', icon: '💰', url: '/receipt-book.html' }
         ];
 
         // 모듈 객체 생성 (기존 호환성 유지)
@@ -425,20 +426,6 @@
             });
 
             menu.appendChild(adminMenuItem);
-
-            // 장부 메뉴 (컴퓨터 관리 아래)
-            if (!document.querySelector('[data-module="receipt-book"]')) {
-                const receiptMenuItem = document.createElement('div');
-                receiptMenuItem.className = 'menu-item';
-                receiptMenuItem.setAttribute('data-module', 'receipt-book');
-                receiptMenuItem.innerHTML = `<span class="menu-icon">💰</span><span>장부</span>`;
-
-                receiptMenuItem.addEventListener('click', (e) => {
-                    loadModule('receipt-book', e);
-                });
-
-                menu.appendChild(receiptMenuItem);
-            }
         }
 
         // 컴퓨터 이름 표시

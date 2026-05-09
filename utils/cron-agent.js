@@ -35,7 +35,13 @@ const config = {
 
 
 const getTodayDateString = () => {
-    return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    // 한국 시간 기준으로 YYYY-MM-DD 생성
+    return new Intl.DateTimeFormat('ko-KR', { 
+        timeZone: 'Asia/Seoul', 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+    }).format(new Date()).replace(/\. /g, '-').replace(/\./g, '');
 };
 
 // ==========================================
@@ -44,17 +50,21 @@ const getTodayDateString = () => {
 cron.schedule('0,30 * * * *', async () => {
     if (!config.smartBookingAgentEnabled) return;
 
-    // 한국 시간(KST) 기준으로 현재 시간 계산
-    const kstNow = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
-    const currentHour = `${String(kstNow.getUTCHours()).padStart(2, '0')}:${String(kstNow.getUTCMinutes()).padStart(2, '0')}`;
+    // 한국 시간(KST) 추출 (HH:mm 형식)
+    const currentHour = new Intl.DateTimeFormat('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    }).format(new Date()).replace(/\s/g, ''); // "08:30" 형태 보장
     
     // 알림 설정 로드
     const settings = getBookingConfig();
     const dDayTime = settings.dDayTime;
 
-    console.log(`[Smart Booking Agent] Checking time: ${currentHour} (Target: ${dDayTime})`);
+    console.log(`[Smart Booking Agent] Checking time (KST): ${currentHour} (Target: ${dDayTime})`);
 
-    // 2차 발송 (D-Day) 체크
+    // 정확히 일치할 때만 발송 로직 실행
     if (currentHour === dDayTime) {
         await runDDayAgent();
     }

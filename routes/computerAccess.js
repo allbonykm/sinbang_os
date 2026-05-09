@@ -13,9 +13,13 @@ const MASTER_MENU_LIST = [
     { id: 'dashboard', name: '대시보드', icon: '🏠' },
     { id: 'patients', name: '환자 관리', icon: '👤' },
     { id: 'booking', name: '예약 관리', icon: '📅' },
+    { id: 'booking-calendar', name: '예약 캘린더', icon: '📆' },
+    { id: 'jabo-management', name: '자보 관리', icon: '🚗' },
     { id: 'alltalk', name: '올톡', icon: '📱' },
     { id: 'visit-analysis', name: '내원간격 분석', icon: '📊' },
-    { id: 'visit-calendar', name: '내원 캘린더', icon: '📅' }
+    { id: 'visit-calendar', name: '내원 캘린더', icon: '📅' },
+    { id: 'patient-upload', name: 'excel로 환자 등록', icon: '📂' },
+    { id: 'receipt-book', name: '장부', icon: '💰' }
 ];
 
 // 메뉴 동기화 함수
