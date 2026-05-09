@@ -74,7 +74,7 @@ function loadTemplateFromJson(templateCode) {
 }
 
 // SMS 발송 (75바이트 초과 시 자동으로 LMS로 업그레이드)
-function sendSMS(phone, content, name = null) {
+function sendSMS(phone, content, name = null, reserveTime = null) {
     const config = getConfig();
     const timestamp = Date.now().toString();
     const urlPath = `/sms/v2/services/${config.SMS_SERVICE_ID}/messages`;
@@ -96,6 +96,12 @@ function sendSMS(phone, content, name = null) {
         messages: [{ to: phone }]
     };
 
+    if (reserveTime) {
+        payload.reserveTime = reserveTime;
+        payload.reserveTimeZone = 'Asia/Seoul';
+        console.log(`[naver-sens] SMS ReserveTime Set: ${reserveTime}`);
+    }
+
     return makeRequest(urlPath, 'POST', payload, timestamp, signature)
         .then(res => {
                 // 텔레그램 알림 추가
@@ -103,7 +109,8 @@ function sendSMS(phone, content, name = null) {
                 const telegram = require('./telegram');
                 const now = new Date().toLocaleString('ko-KR');
                 const nameDisplay = name ? `${name} 님` : `${phone}`;
-                const msg = `📱 [문자메시지]\n${nameDisplay}에게 문자 발송 완료!\n${now}`;
+                const reserveInfo = reserveTime ? ` (예약: ${reserveTime})` : '';
+                const msg = `📱 [문자메시지]\n${nameDisplay}에게 문자 발송 완료!${reserveInfo}\n${now}`;
                 telegram.sendTelegramAlert(msg);
             }
             return { ...res, msgType, byteLength };
@@ -111,7 +118,7 @@ function sendSMS(phone, content, name = null) {
 }
 
 // 알림톡 발송
-async function sendAlimTalk(name, chartNo, phone, failoverMessage, templateCode = null, customContent = null, customButtons = null, variables = null) {
+async function sendAlimTalk(name, chartNo, phone, failoverMessage, templateCode = null, customContent = null, customButtons = null, variables = null, reserveTime = null) {
     const config = getConfig();
     const timestamp = Date.now().toString();
     const urlPath = `/alimtalk/v2/services/${config.ALIMTALK_SERVICE_ID}/messages`;
@@ -219,16 +226,6 @@ async function sendAlimTalk(name, chartNo, phone, failoverMessage, templateCode 
         });
     }
 
-    // Fallback Buttons Removed (Strict Mode)
-    if (!buttons && !customButtons) {
-        // Did not load buttons from template, and no custom buttons.
-        // In Strict Mode, do we fail? Or just send no buttons?
-        // Usually templates have buttons. If loadedTemplate exists but has no buttons, it's fine.
-        // But if we failed to map, it might be an issue.
-        // For now, let's allow no-buttons if the template says so.
-    }
-
-
     // [올본 OS 로직 이식] 강조 표기 타이틀 설정
     // 템플릿의 emphasizeType이 TEXT일 때만 title 필드를 포함하여 보냅니다.
     let msgTitle = (loadedTemplate && loadedTemplate.emphasizeType === 'TEXT')
@@ -256,6 +253,12 @@ async function sendAlimTalk(name, chartNo, phone, failoverMessage, templateCode 
         messages: [messagePayload],
         useSmsFailover: false // 전체 레벨 차단
     };
+
+    if (reserveTime) {
+        payload.reserveTime = reserveTime;
+        payload.reserveTimeZone = 'Asia/Seoul';
+        console.log(`[naver-sens] AlimTalk ReserveTime Set: ${reserveTime}`);
+    }
 
     const result = await makeRequest(urlPath, 'POST', payload, timestamp, signature);
 
@@ -317,11 +320,11 @@ function makeRequest(path, method, payload, timestamp, signature) {
 }
 
 // 추가 헬퍼 함수들 (호환성을 위해 내보내기됨)
-async function sendSMSWithRetry(phone, content, maxRetries = 3) {
+async function sendSMSWithRetry(phone, content, maxRetries = 3, reserveTime = null) {
     let lastError = '알 수 없는 오류';
     for (let i = 0; i < maxRetries; i++) {
         try {
-            const result = await sendSMS(phone, content);
+            const result = await sendSMS(phone, content, null, reserveTime);
             if (result.success) return result;
             lastError = result.error || result.statusMessage || JSON.stringify(result);
             console.error(`[SMS Attempt ${i + 1}] Failed:`, lastError);
@@ -353,7 +356,7 @@ function stripEmojis(str) {
 }
 
 // 브랜드 메시지 발송
-async function sendBrandMessage(name, chartNo, phone, templateCode, messageType = 'TEXT', customContent = null, customButtons = null, variables = null) {
+async function sendBrandMessage(name, chartNo, phone, templateCode, messageType = 'TEXT', customContent = null, customButtons = null, variables = null, reserveTime = null) {
     const config = getConfig();
     if (!config.BMM_SERVICE_ID) {
         return { success: false, error: 'BMM_SERVICE_ID가 설정되지 않았거나 잘못되었습니다. 네이버 SENS Brand Message 프로젝트 ID를 확인해 주세요.' };
@@ -415,6 +418,12 @@ async function sendBrandMessage(name, chartNo, phone, templateCode, messageType 
             useSmsFailover: false // 브랜드 메시지 대체 문자 발송 차단
         }]
     };
+
+    if (reserveTime) {
+        payload.reserveTime = reserveTime;
+        payload.reserveTimeZone = 'Asia/Seoul';
+        console.log(`[naver-sens] BrandMessage ReserveTime Set: ${reserveTime}`);
+    }
 
     return makeRequest(urlPath, 'POST', payload, timestamp, signature);
 }

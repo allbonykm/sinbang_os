@@ -122,28 +122,31 @@ router.post('/alltalk/import-sens-templates', async (req, res) => {
 // 알림톡 발송 (All-Talk 전용)
 router.post('/alltalk/send-alimtalk', async (req, res) => {
     try {
-        const { patients: rawPatients, templateCode, content, buttons, variables } = req.body;
+        const { patients: rawPatients, templateCode, content, buttons, variables, reserveTime } = req.body;
         const patients = rawPatients.map(p => ({ ...p, chartNo: sanitizeChartNo(p.chartNo) }));
         const results = [];
 
         for (const p of patients) {
             try {
                 const cleanPhone = (p.phone || '').replace(/[^0-9]/g, '');
-                const result = await sens.sendAlimTalk(p.name, p.chartNo, cleanPhone, null, templateCode, content, buttons, variables);
+                const result = await sens.sendAlimTalk(p.name, p.chartNo, cleanPhone, null, templateCode, content, buttons, variables, reserveTime);
                 
                 const formattedPhone = cleanPhone.replace(/^(\d{3})(\d{3,4})(\d{4})$/, '$1-$2-$3');
                 const requestId = (result.data && result.data.requestId) || null;
-                const statusName = result.success ? 'success' : 'failed';
+                const statusName = reserveTime && result.success ? '예약' : (result.success ? 'success' : 'failed');
                 const errorDesc = result.success ? '' : (result.error || '');
 
-                await pool.query(
-                    `INSERT INTO message_history (id, patientName, chartNo, phone, sentAt, type, status, templateCode, message, requestId)
-                    VALUES (?, ?, ?, ?, NOW(), '알림톡', ?, ?, ?, ?)`,
-                    [`${Date.now()}-${p.chartNo}-${Math.floor(Math.random() * 10000)}`, p.name, p.chartNo || '', formattedPhone, statusName, templateCode, errorDesc, requestId]
-                );
+                // 예약 발송인 경우 sentAt을 reserveTime으로 기록
+                const sql = `INSERT INTO message_history (id, patientName, chartNo, phone, sentAt, type, status, templateCode, message, requestId)
+                             VALUES (?, ?, ?, ?, ${reserveTime ? '?' : 'NOW()'}, '알림톡', ?, ?, ?, ?)`;
+                const params = [`${Date.now()}-${p.chartNo}-${Math.floor(Math.random() * 10000)}`, p.name, p.chartNo || '', formattedPhone];
+                if (reserveTime) params.push(reserveTime);
+                params.push(statusName, templateCode, errorDesc, requestId);
+
+                await pool.query(sql, params);
 
                 const io = req.app.get('io');
-                logSystemEvent(io, 'msg:alimtalk', `알림톡 발송 완료: ${p.name}`, { patientName: p.name, chartNo: p.chartNo, status: statusName });
+                logSystemEvent(io, 'msg:alimtalk', `알림톡 발송 ${reserveTime ? '예약' : '완료'}: ${p.name}`, { patientName: p.name, chartNo: p.chartNo, status: statusName });
 
                 results.push({ name: p.name, success: result.success, error: result.error });
             } catch (e) {
@@ -235,28 +238,30 @@ router.post('/alltalk/import-bmm-templates', async (req, res) => {
 // 브랜드 메시지 발송
 router.post('/alltalk/send-brandmessage', async (req, res) => {
     try {
-        const { patients: rawPatients, templateCode, messageType, content, buttons, variables } = req.body;
+        const { patients: rawPatients, templateCode, messageType, content, buttons, variables, reserveTime } = req.body;
         const patients = rawPatients.map(p => ({ ...p, chartNo: sanitizeChartNo(p.chartNo) }));
         const results = [];
 
         for (const p of patients) {
             try {
                 const cleanPhone = (p.phone || '').replace(/[^0-9]/g, '');
-                const result = await sens.sendBrandMessage(p.name, p.chartNo, cleanPhone, templateCode, messageType, content, buttons, variables);
+                const result = await sens.sendBrandMessage(p.name, p.chartNo, cleanPhone, templateCode, messageType, content, buttons, variables, reserveTime);
                 
                 const formattedPhone = cleanPhone.replace(/^(\d{3})(\d{3,4})(\d{4})$/, '$1-$2-$3');
                 const requestId = (result.data && result.data.requestId) || null;
-                const statusName = result.success ? 'success' : 'failed';
+                const statusName = reserveTime && result.success ? '예약' : (result.success ? 'success' : 'failed');
                 const errorDesc = result.success ? '' : (result.error || '');
 
-                await pool.query(
-                    `INSERT INTO message_history (id, patientName, chartNo, phone, sentAt, type, status, templateCode, message, requestId)
-                    VALUES (?, ?, ?, ?, NOW(), '브랜드메시지', ?, ?, ?, ?)`,
-                    [`${Date.now()}-${p.chartNo}-${Math.floor(Math.random() * 10000)}`, p.name, p.chartNo || '', formattedPhone, statusName, templateCode, errorDesc, requestId]
-                );
+                const sql = `INSERT INTO message_history (id, patientName, chartNo, phone, sentAt, type, status, templateCode, message, requestId)
+                             VALUES (?, ?, ?, ?, ${reserveTime ? '?' : 'NOW()'}, '브랜드메시지', ?, ?, ?, ?)`;
+                const params = [`${Date.now()}-${p.chartNo}-${Math.floor(Math.random() * 10000)}`, p.name, p.chartNo || '', formattedPhone];
+                if (reserveTime) params.push(reserveTime);
+                params.push(statusName, templateCode, errorDesc, requestId);
+
+                await pool.query(sql, params);
 
                 const io = req.app.get('io');
-                logSystemEvent(io, 'msg:bmm', `브랜드 메시지 발송 완료: ${p.name}`, { patientName: p.name, status: statusName });
+                logSystemEvent(io, 'msg:bmm', `브랜드 메시지 발송 ${reserveTime ? '예약' : '완료'}: ${p.name}`, { patientName: p.name, status: statusName });
 
                 results.push({ name: p.name, success: result.success, error: result.error });
             } catch (e) {
@@ -271,7 +276,7 @@ router.post('/alltalk/send-brandmessage', async (req, res) => {
 
 // SMS/LMS 단건 및 일괄 발송
 router.post('/send-sms', async (req, res) => {
-    const { patients: rawPatients, content } = req.body;
+    const { patients: rawPatients, content, reserveTime } = req.body;
     if (!rawPatients || !content) return res.status(400).json({ success: false, message: '보낼 환자와 내용을 입력하세요.' });
     const patients = rawPatients.map(p => ({ ...p, chartNo: sanitizeChartNo(p.chartNo) }));
 
@@ -279,21 +284,24 @@ router.post('/send-sms', async (req, res) => {
         const results = [];
         for (const p of patients) {
             const cleanPhone = (p.phone || '').replace(/[^0-9]/g, '');
-            const result = await sens.sendSMSWithRetry(cleanPhone, content);
+            const result = await sens.sendSMSWithRetry(cleanPhone, content, 3, reserveTime);
 
             const formattedPhone = cleanPhone.replace(/^(\d{3})(\d{3,4})(\d{4})$/, '$1-$2-$3');
             const sentAt = new Date();
             const sentType = result.msgType || (sens.getByteLength(content) > 90 ? 'LMS' : 'SMS');
+            const statusName = reserveTime && result.success ? '예약' : (result.success ? 'success' : 'failed');
 
-            await pool.query(
-                `INSERT INTO message_history (id, patientName, chartNo, phone, sentAt, type, status, message)
-                VALUES (?, ?, ?, ?, NOW(), ?, ?, ?)`,
-                [`${Date.now()}-${p.chartNo}-${Math.floor(Math.random() * 10000)}`, p.name || '', p.chartNo || '', formattedPhone, sentType, result.success ? 'success' : 'failed', content]
-            );
+            const sql = `INSERT INTO message_history (id, patientName, chartNo, phone, sentAt, type, status, message)
+                         VALUES (?, ?, ?, ?, ${reserveTime ? '?' : 'NOW()'}, ?, ?, ?)`;
+            const params = [`${Date.now()}-${p.chartNo}-${Math.floor(Math.random() * 10000)}`, p.name || '', p.chartNo || '', formattedPhone];
+            if (reserveTime) params.push(reserveTime);
+            params.push(sentType, statusName, content);
+
+            await pool.query(sql, params);
 
             if (result.success) {
                 const io = req.app.get('io');
-                logSystemEvent(io, 'msg:sms', `${sentType} 발송 완료: ${p.name}`, { patientName: p.name, type: sentType });
+                logSystemEvent(io, 'msg:sms', `${sentType} 발송 ${reserveTime ? '예약' : '완료'}: ${p.name}`, { patientName: p.name, type: sentType });
             }
             results.push({ name: p.name, success: result.success, error: result.error });
         }

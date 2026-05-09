@@ -1191,6 +1191,96 @@
             align-items: center;
             gap: 4px;
         }
+
+        /* 발송 시간 설정 스타일 */
+        .dispatch-time-section {
+            padding: 16px 20px;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        .dispatch-time-section h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin: 0 0 10px;
+        }
+        .time-options {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .time-opt-btn {
+            flex: 1;
+            padding: 8px 4px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .time-opt-btn:hover {
+            background: #f1f5f9;
+            color: #6366f1;
+        }
+        .time-opt-btn.active {
+            background: #6366f1;
+            color: white;
+            border-color: #6366f1;
+            box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+        }
+        .time-opt-custom {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex: 1.5;
+            background: white;
+            padding: 2px 6px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .time-opt-custom input {
+            width: 36px;
+            border: none;
+            border-bottom: 1px solid #cbd5e1;
+            outline: none;
+            font-size: 13px;
+            text-align: center;
+            padding: 2px 0;
+            font-weight: 700;
+            color: #6366f1;
+        }
+        .time-opt-custom span {
+            font-size: 11px;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+        .time-opt-custom .apply-btn {
+            padding: 4px 8px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+        }
+        .time-opt-custom.active {
+            border-color: #6366f1;
+            box-shadow: 0 2px 4px rgba(99, 102, 241, 0.1);
+        }
+        .selected-time-info {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #6366f1;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
     </style>
 </head>
 
@@ -1319,6 +1409,23 @@
                     <div id="variable-inputs"></div>
                 </div>
 
+                <!-- 발송 시간 설정 -->
+                <div class="dispatch-time-section">
+                    <h4>⏰ 발송 시간 설정</h4>
+                    <div class="time-options">
+                        <button class="time-opt-btn active" data-time="now" onclick="setDispatchTime('now', this)">즉시발송</button>
+                        <button class="time-opt-btn" data-time="10m" onclick="setDispatchTime('10m', this)">10분 뒤</button>
+                        <div class="time-opt-custom" id="custom-time-wrapper">
+                            <input type="number" id="dispatch-days" value="1" min="1" oninput="updateCustomTimeLabel()">
+                            <span>일 뒤</span>
+                            <button class="time-opt-btn" style="border:none; padding: 6px 0;" onclick="setDispatchTime('custom', document.getElementById('custom-time-wrapper'))">오전 8시 50분</button>
+                        </div>
+                    </div>
+                    <div class="selected-time-info" id="selected-time-display">
+                        🚀 발송 예정: 즉시발송
+                    </div>
+                </div>
+
                 <!-- 발송 버튼 -->
                 <div class="send-action">
                     <div class="selected-count">
@@ -1396,6 +1503,7 @@
         let historyData = [];       // 최근 발송 이력 데이터 캐시
         let selectedHistoryIdx = -1; // 현재 조회 중인 이력 인덱스
         let patientRecentBooking = null; // 선택된 환자의 최신 예약 정보 캐시
+        let scheduledReserveTime = null; // 예약 발송 시간 (yyyy-MM-dd HH:mm 형식)
 
         // ==========================================
         let selectedIndex = -1; // 검색 결과 키보드 선택 인덱스
@@ -1507,6 +1615,64 @@
             // 미리보기 업데이트
             updatePreview();
             updateSendButton();
+        }
+
+        // ==========================================
+        // 발송 시간 설정
+        // ==========================================
+        function setDispatchTime(type, element) {
+            // 버튼 활성화 상태 변경
+            document.querySelectorAll('.time-opt-btn, .time-opt-custom').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+
+            const displayEl = document.getElementById('selected-time-display');
+            const now = new Date();
+
+            if (type === 'now') {
+                scheduledReserveTime = null;
+                displayEl.innerHTML = '🚀 발송 예정: 즉시발송';
+            } 
+            else if (type === '10m') {
+                const target = new Date(now.getTime() + 10 * 60000 + 10000); // 정확히 10분 뒤 (안전을 위해 +10초)
+                scheduledReserveTime = formatReserveTime(target);
+                displayEl.innerHTML = `⏰ 발송 예정: ${formatDisplayTime(target)} (10분 뒤)`;
+            } 
+            else if (type === 'custom') {
+                const days = parseInt(document.getElementById('dispatch-days').value) || 0;
+                const target = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+                target.setHours(8, 50, 0, 0); // 오전 8시 50분
+                
+                scheduledReserveTime = formatReserveTime(target);
+                displayEl.innerHTML = `📅 발송 예정: ${formatDisplayTime(target)} (${days}일 뒤 오전 8시 50분)`;
+            }
+        }
+
+        function updateCustomTimeLabel() {
+            const days = parseInt(document.getElementById('dispatch-days').value) || 0;
+            const wrapper = document.getElementById('custom-time-wrapper');
+            if (wrapper.classList.contains('active')) {
+                setDispatchTime('custom', wrapper);
+            }
+        }
+
+        function formatReserveTime(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${y}-${m}-${d} ${h}:${min}`;
+        }
+
+        function formatDisplayTime(date) {
+            const m = date.getMonth() + 1;
+            const d = date.getDate();
+            const h = date.getHours();
+            const min = String(date.getMinutes()).padStart(2, '0');
+            const ampm = h >= 12 ? '오후' : '오전';
+            const h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+            const week = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
+            return `${m}월 ${d}일(${week}) ${ampm} ${h12}:${min}`;
         }
 
         function getByteCount(str) {
@@ -2256,14 +2422,19 @@
                                 linkMobile: b.linkMobile || '',
                                 linkPc: b.linkPc || ''
                             })),
-                            variables
+                            variables,
+                            reserveTime: scheduledReserveTime
                         })
                     });
                 } else {
                     res = await fetch('/api/send-sms', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ patients, content: document.getElementById('sms-message').value })
+                        body: JSON.stringify({ 
+                            patients, 
+                            content: document.getElementById('sms-message').value,
+                            reserveTime: scheduledReserveTime
+                        })
                     });
                 }
 
